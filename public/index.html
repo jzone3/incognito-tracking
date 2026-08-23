@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Who Am I? — silent device fingerprint demo</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #eef2ff, #fce7f3); color: #111;
+  }
+  .card {
+    width: min(560px, 92vw); background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.6); border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(30,27,75,0.18); padding: 32px 30px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #4b5563; font-size: 14px; margin: 0 0 22px; }
+  .known { font-size: 15px; }
+  .known b { font-size: 26px; }
+  input {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid #d1d5db; font-size: 16px; margin: 8px 0 14px;
+  }
+  button {
+    width: 100%; padding: 12px 14px; border: 0; border-radius: 12px;
+    background: #4f46e5; color: #fff; font-size: 16px; font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #4338ca; }
+  .fp { margin-top: 22px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px; color: #6b7280; word-break: break-all; }
+  .fp span { color: #111; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px;
+           background:#ecfdf5; color:#047857; font-size:12px; font-weight:600; }
+  .badge.new { background:#eff6ff; color:#1d4ed8; }
+  .hint { font-size:12px; color:#6b7280; margin-top:14px; }
+  a { color:#4f46e5; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Who am I?</h1>
+    <p class="sub">No login. No cookies. No microphone. This page recognizes your
+    <em>device</em> from the way its hardware processes an inaudible sound + graphics.</p>
+    <div id="app">Reading your device fingerprint…</div>
+    <div class="fp">
+      hardware id: <span id="hwid">…</span><br />
+      full id: <span id="fullid">…</span>
+    </div>
+    <p class="hint">Try it: enter your name here, then open this exact URL in an
+    <b>incognito window</b> (or clear cookies, or even a different browser) — it will
+    still know who you are.</p>
+  </div>
+
+<!-- relative paths so the demo works mounted at / or at /projects/<name>/ -->
+<script src="fingerprint.js"></script>
+<script>
+(async () => {
+  const app = document.getElementById('app');
+  const fp = await computeFingerprint();
+  document.getElementById('hwid').textContent = fp.hardware;
+  document.getElementById('fullid').textContent = fp.full;
+
+  const lookup = await fetch('api/identify', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ hardware: fp.hardware, full: fp.full, components: fp.components }),
+  }).then(r => r.json());
+
+  if (lookup.name) {
+    const via = lookup.matchedOn === 'full' ? 'exact device+browser match'
+                                            : 'hardware match across browsers/profiles';
+    app.innerHTML =
+      '<p class="known">I know you. You are <b>' + escapeHtml(lookup.name) + '</b>.</p>' +
+      '<p class="sub"><span class="badge">recognized</span> via ' + via +
+      ' — no cookie was ever set.</p>' +
+      '<button id="forget">This isn\'t me / reset name</button>';
+    document.getElementById('forget').onclick = showForm;
+  } else {
+    showForm();
+  }
+
+  function showForm() {
+    app.innerHTML =
+      '<p><span class="badge new">new device</span> I don\'t recognize this device yet.</p>' +
+      '<input id="name" placeholder="Type your name" autocomplete="off" />' +
+      '<button id="save">Remember me</button>';
+    const save = document.getElementById('save');
+    const name = document.getElementById('name');
+    name.focus();
+    save.onclick = async () => {
+      const v = name.value.trim();
+      if (!v) return;
+      await fetch('api/register', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: v, hardware: fp.hardware, full: fp.full }),
+      });
+      app.innerHTML = '<p class="known">Saved. You are <b>' + escapeHtml(v) +
+        '</b>.</p><p class="sub">Now open this URL in incognito / another browser.</p>';
+    };
+    name.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+})();
+</script>
+</body>
+</html>

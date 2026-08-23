@@ -1,0 +1,13 @@
+{
+  "name": "incognito-tracking",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Demo: a website recognizes you across incognito / cleared cookies / another browser using only a silent device fingerprint.",
+  "scripts": {
+    "start": "node server.js",
+    "verify": "node verify.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}
