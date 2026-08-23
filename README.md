@@ -48,6 +48,17 @@ The server ([`api/fp.js`](api/fp.js)) tries `full` first, then falls back
 to `hardware`. That fallback is the whole point: it is what links an incognito
 session back to your named identity.
 
+Two extras make the link visible without storing anything else:
+
+- **Badge** — an emoji and a colour indexed out of the first bytes of the `hardware`
+  hash, so the same machine draws the same badge in every browser and profile.
+  Derived client-side in `deviceAvatar()`; nothing is persisted.
+- **City** — resolved from the request IP, which needs no permission and shows no
+  indicator (unlike `navigator.geolocation`). On Vercel this comes from the
+  `x-vercel-ip-city` / `-country-region` / `-country` edge headers; locally it falls
+  back to a keyless [ipwho.is](https://ipwho.is) lookup, and private IPs are skipped.
+  It is city-level, often off by a metro area, and never stored.
+
 ## Run it locally
 
 ```bash

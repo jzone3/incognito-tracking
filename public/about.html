@@ -92,6 +92,26 @@
   </div>
 
   <div class="card">
+    <h2>The badge, and the city</h2>
+    <p>The demo gives every device an emoji and a colour. Neither is stored anywhere: they are
+    read straight out of the first bytes of the hardware hash, so the same machine draws the same
+    badge in a normal window, in incognito, and often in a completely different browser. It is the
+    same link the name lookup makes, just visible at a glance.</p>
+<pre class="ascii">
+ hardware id  5f1c9a…      badge  = emoji[ 0x5f1c % 24 ]  +  colour[ 0x9a… % 8 ]
+                                    same device → same badge, every time
+</pre>
+    <p>The city comes from your IP address, which every request carries by definition — there is
+    no <code>navigator.geolocation</code> call, so there is no location prompt to decline and no
+    indicator. Hosted on Vercel, the edge network hands the server a city and region header before
+    any code of mine runs; run locally it falls back to a keyless IP lookup. It is city-level,
+    frequently wrong by a metro area, and this demo never stores it.</p>
+    <p class="small">Put together, that is the uncomfortable part: a page you have never logged
+    into, that set no cookie, can greet you with a stable identity and a rough location in the
+    first few hundred milliseconds.</p>
+  </div>
+
+  <div class="card">
     <h2>The realtime variant — the Bluetooth bug</h2>
     <p>A minority of sites (AliExpress and, surprisingly, eBay in my run) don’t use the offline
     path. They create a <em>realtime</em> <code>AudioContext</code> and connect the graph through a

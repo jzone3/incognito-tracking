@@ -35,6 +35,10 @@
       <div><b>full id</b> <span class="val" id="fullid">…</span></div>
     </div>
     <p class="small" style="margin-top:16px">
+      The emoji badge is read out of your device hash, so it follows you between browsers;
+      the city is read off your IP, which needs no permission prompt. Neither is stored.
+    </p>
+    <p class="small">
       Inspired by <a href="https://x.com/joshuasteinman/status/2091529956539154583">this thread</a>
       claiming AliExpress was “secretly recording audio.” It isn’t — there is no microphone
       involved. What it actually does is play a signal you can’t hear and measure your hardware,
@@ -148,17 +152,21 @@
     body: JSON.stringify(body),
   }).then(r => r.json());
 
+  const avatar = deviceAvatar(fp.hardware);
+
   const lookup = await api({
     op: 'identify', hardware: fp.hardware, full: fp.full, components: fp.components,
   });
+  const place = placeSuffix(lookup.geo);
 
   if (lookup.name) {
     const via = lookup.matchedOn === 'full' ? 'an exact device + browser match'
                                             : 'a hardware match across browsers/profiles';
     app.innerHTML =
-      '<p class="known">I know you. You are <b>' + escapeHtml(lookup.name) + '</b></p>' +
-      '<p class="small"><span class="tag">recognized</span> via ' + via +
-      ' — no cookie was ever set.</p>' +
+      '<div class="who">' + face(avatar, 'lg') +
+      '<div><p class="known">I know you. You are <b>' + escapeHtml(lookup.name) + '</b></p>' +
+      '<p class="small"><span class="tag">recognized</span> via ' + via + place +
+      ' — no cookie was ever set.</p></div></div>' +
       '<button class="ghost" id="forget">This isn\'t me / reset</button>';
     document.getElementById('forget').onclick = showForm;
   } else {
@@ -167,7 +175,9 @@
 
   function showForm() {
     app.innerHTML =
-      '<p class="small"><span class="tag new">new device</span> I don\'t recognize this device yet.</p>' +
+      '<p class="small"><span class="tag new">new device</span> I don\'t recognize this device yet — ' +
+      'but I already know it as the <b>' + avatar.colorName + ' ' + avatar.emoji + '</b> device' +
+      place + '.</p>' +
       '<input id="name" placeholder="Type your name" autocomplete="off" />' +
       '<button id="save">Remember me</button>';
     const save = document.getElementById('save');
@@ -177,11 +187,32 @@
       const v = name.value.trim();
       if (!v) return;
       await api({ op: 'register', name: v, hardware: fp.hardware, full: fp.full });
-      app.innerHTML = '<p class="known">Saved. You are <b>' + escapeHtml(v) + '</b></p>' +
+      app.innerHTML =
+        '<div class="who">' + face(avatar, 'lg') +
+        '<div><p class="known">Saved. You are <b>' + escapeHtml(v) + '</b></p>' +
         '<p class="small">Now open this URL in an incognito window — or clear your cookies, ' +
-        'or try another browser on this machine.</p>';
+        'or try another browser on this machine. The same ' + avatar.emoji +
+        ' badge will come back with you.</p></div></div>';
     };
     name.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
+  }
+
+  // The badge is drawn from the fingerprint hash, so it is the same shape and
+  // colour in every browser on this machine — the link, made visible.
+  function face(a, size) {
+    return '<span class="face ' + size + '" style="--c:' + a.color + '">' + a.emoji + '</span>';
+  }
+
+  // City from the IP alone — no geolocation prompt, nothing to decline.
+  function placeSuffix(geo) {
+    if (!geo || !geo.city) return '';
+    const where = [geo.city, geo.region, geo.country].filter(Boolean).map(escapeHtml).join(', ');
+    return ', apparently near <b>' + flag(geo.country) + ' ' + where + '</b>';
+  }
+
+  function flag(cc) {
+    if (!/^[A-Za-z]{2}$/.test(cc || '')) return '';
+    return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
   }
 
   function escapeHtml(s) {

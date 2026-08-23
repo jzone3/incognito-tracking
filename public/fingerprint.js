@@ -111,4 +111,27 @@ async function computeFingerprint() {
   };
 }
 
+// Give the device a face. Nothing is stored for this — the emoji and colour are
+// read straight out of the fingerprint hash, so the same machine always draws the
+// same badge, in incognito and in another browser too.
+const AVATAR_EMOJI = [
+  '\u{1F98A}', '\u{1F419}', '\u{1F98B}', '\u{1F42C}', '\u{1F984}', '\u{1F43F}',
+  '\u{1F989}', '\u{1F41D}', '\u{1F438}', '\u{1F427}', '\u{1F98E}', '\u{1F980}',
+  '\u{1F42A}', '\u{1F992}', '\u{1F9A9}', '\u{1F99C}', '\u{1F995}', '\u{1F9AB}',
+  '\u{1F9A6}', '\u{1F994}', '\u{1F987}', '\u{1F41A}', '\u{1F41E}', '\u{1F997}',
+];
+const AVATAR_COLOR = [
+  { name: 'violet', hex: '#3969ca' }, { name: 'teal', hex: '#21c19a' },
+  { name: 'blue', hex: '#0294de' }, { name: 'amber', hex: '#d98314' },
+  { name: 'rose', hex: '#d2456d' }, { name: 'indigo', hex: '#5b45c8' },
+  { name: 'moss', hex: '#4f8a3d' }, { name: 'clay', hex: '#b4593a' },
+];
+
+function deviceAvatar(hash) {
+  const emoji = AVATAR_EMOJI[parseInt(hash.slice(0, 4), 16) % AVATAR_EMOJI.length];
+  const color = AVATAR_COLOR[parseInt(hash.slice(4, 8), 16) % AVATAR_COLOR.length];
+  return { emoji, color: color.hex, colorName: color.name };
+}
+
 window.computeFingerprint = computeFingerprint;
+window.deviceAvatar = deviceAvatar;

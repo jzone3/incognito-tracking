@@ -80,6 +80,18 @@ button.ghost:hover { background: transparent; color: var(--ink); border-color: v
 .known b { font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 600;
   font-size: 32px; display: block; line-height: 1.1; margin: 2px 0 4px; }
 
+/* device badge: emoji + colour derived from the fingerprint hash */
+.who { display: flex; align-items: flex-start; gap: 18px; }
+.who > div { min-width: 0; }
+.face {
+  flex: none; display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 50%; font-size: 20px; line-height: 1;
+  background: color-mix(in srgb, var(--c) 14%, #fff);
+  border: 1px solid color-mix(in srgb, var(--c) 45%, #fff);
+}
+.face.lg { width: 64px; height: 64px; font-size: 34px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 8%, transparent); }
+@media (max-width: 480px) { .who { gap: 12px; } .face.lg { width: 48px; height: 48px; font-size: 26px; } }
+
 .tag {
   display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 11px;
   letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
