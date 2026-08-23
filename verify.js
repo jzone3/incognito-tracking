@@ -1,6 +1,9 @@
 // Verify the demo links two separate browser contexts via fingerprint alone.
 const playwright = require('playwright');
 const BASE = 'http://localhost:8080';
+// Unique per run, so a stale registration from an earlier run can't fake a pass.
+const NAME = 'Jared-' + Date.now().toString(36);
+const KNOWS = new RegExp('You are\\s+' + NAME);
 
 async function run(browser, label) {
   // Fresh context = no shared cookies/storage with any other context.
@@ -23,15 +26,20 @@ async function run(browser, label) {
 
   // Context A: register a name.
   const A = await run(chromium, 'chromium-normal');
-  await A.page.fill('#name', 'Jared');
+  // A previous run may have left this device registered; reset to the form first.
+  if (await A.page.locator('#forget').count()) {
+    await A.page.click('#forget');
+    await A.page.waitForSelector('#name');
+  }
+  await A.page.fill('#name', NAME);
   await A.page.click('#save');
   await A.page.waitForTimeout(400);
   await A.ctx.close();
 
   // Context B: brand-new context (simulates incognito / cleared cookies).
   const B = await run(chromium, 'chromium-incognito');
-  const knowsB = /You are\s+Jared/.test(B.state);
-  console.log(`RESULT chromium incognito recognized as Jared: ${knowsB}`);
+  const knowsB = KNOWS.test(B.state);
+  console.log(`RESULT chromium incognito recognized as ${NAME}: ${knowsB}`);
   await B.ctx.close();
   await chromium.close();
 
@@ -40,8 +48,8 @@ async function run(browser, label) {
   try {
     const firefox = await playwright.firefox.launch();
     const C = await run(firefox, 'firefox');
-    knowsFF = /You are\s+Jared/.test(C.state);
-    console.log(`RESULT firefox recognized as Jared: ${knowsFF}`);
+    knowsFF = KNOWS.test(C.state);
+    console.log(`RESULT firefox recognized as ${NAME}: ${knowsFF}`);
     await C.ctx.close();
     await firefox.close();
   } catch (e) {

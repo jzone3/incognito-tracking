@@ -4,19 +4,23 @@ const store = require('./_store');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.statusCode = 405; return res.end('method'); }
-  const body = await readJson(req);
-  const { full, hardware } = body;
-  // Precise full (device + browser) match first, then the hardware-only match
-  // that survives incognito / cookie-clear / another browser on the same machine.
-  if (full) {
-    const n = await store.get('full:' + full);
-    if (n) return json(res, { name: n, matchedOn: 'full' });
+  const { full, hardware } = await readJson(req);
+  try {
+    // Precise full (device + browser) match first, then the hardware-only match
+    // that survives incognito / cookie-clear / another browser on the same machine.
+    if (full) {
+      const n = await store.get('full:' + full);
+      if (n) return json(res, { name: n, matchedOn: 'full' });
+    }
+    if (hardware) {
+      const n = await store.get('hw:' + hardware);
+      if (n) return json(res, { name: n, matchedOn: 'hardware' });
+    }
+    return json(res, { name: null });
+  } catch (err) {
+    res.statusCode = 500;
+    return json(res, { error: 'store unavailable' });
   }
-  if (hardware) {
-    const n = await store.get('hw:' + hardware);
-    if (n) return json(res, { name: n, matchedOn: 'hardware' });
-  }
-  return json(res, { name: null });
 };
 
 function json(res, obj) {

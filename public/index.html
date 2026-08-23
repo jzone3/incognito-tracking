@@ -63,6 +63,14 @@
 <script>
 (async () => {
   const app = document.getElementById('app');
+
+  // Hashing needs crypto.subtle, which only exists in a secure context.
+  if (!window.isSecureContext || !(window.crypto && crypto.subtle)) {
+    app.innerHTML = '<p>This demo needs a secure context — open it over HTTPS ' +
+      'or on <code>localhost</code>.</p>';
+    return;
+  }
+
   const fp = await computeFingerprint();
   document.getElementById('hwid').textContent = fp.hardware;
   document.getElementById('fullid').textContent = fp.full;

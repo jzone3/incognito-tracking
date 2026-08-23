@@ -72,9 +72,12 @@ recognized.
 
 ```
 [chromium-normal]    app: new device I don't recognize this device yet.
-[chromium-incognito] app: I know you. You are Jared. recognized via hardware match…
-RESULT chromium incognito recognized as Jared: true
+[chromium-incognito] app: I know you. You are Jared-mfk2p1. recognized via…
+RESULT chromium incognito recognized as Jared-mfk2p1: true
 ```
+
+The name is randomized per run so a leftover registration from an earlier run
+cannot produce a false pass.
 
 ## Honest limitations
 

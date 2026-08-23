@@ -6,8 +6,13 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.statusCode = 405; return res.end('method'); }
   const { name, hardware, full } = await readJson(req);
   if (!name || !hardware) { res.statusCode = 400; return json(res, { ok: false }); }
-  await store.set('hw:' + hardware, name);
-  if (full) await store.set('full:' + full, name);
+  try {
+    await store.set('hw:' + hardware, name);
+    if (full) await store.set('full:' + full, name);
+  } catch (err) {
+    res.statusCode = 500;
+    return json(res, { ok: false, error: 'store unavailable' });
+  }
   return json(res, { ok: true });
 };
 
