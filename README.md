@@ -34,7 +34,7 @@ anywhere; the audio component is pure offline signal processing.
 | --- | --- |
 | Audio | `OfflineAudioContext`: triangle oscillator → `DynamicsCompressor` → render, then sum a slice of the output buffer. Floating-point results differ per audio stack. |
 | WebGL | Unmasked vendor/renderer strings, max texture sizes, supported extension list. |
-| Static | Screen size, color depth, device pixel ratio, CPU cores, device memory, platform, touch points, timezone. |
+| Static | Screen size, color depth, CPU cores, device memory, platform, touch points, timezone. (`devicePixelRatio` is deliberately excluded — page zoom changes it, and zoom is per-profile.) |
 | Canvas | Text + shape rasterization read back via `toDataURL()` (font/AA differences). |
 
 Two IDs are derived:
@@ -44,7 +44,7 @@ Two IDs are derived:
   new profile or a different browser.
 - **`full`** = SHA-256(everything, including canvas). More precise, more brittle.
 
-The server ([`api/identify.js`](api/identify.js)) tries `full` first, then falls back
+The server ([`api/fp.js`](api/fp.js)) tries `full` first, then falls back
 to `hardware`. That fallback is the whole point: it is what links an incognito
 session back to your named identity.
 
@@ -104,13 +104,26 @@ That is not possible without an exploit, and it is not what the real-world scrip
 
 ## Deploying
 
-Static files in `public/`, two serverless functions in `api/`. Paths are relative so
-it works mounted at `/` or at a subpath like `/projects/incognito-tracking/`.
+Static files in `public/`, one serverless function in [`api/fp.js`](api/fp.js) that
+handles both `identify` and `register`. It is a single function on purpose: separate
+Vercel functions get separate module instances, so the in-memory fallback store would
+never be shared between a register and a later identify.
 
-For a real deployment, set `KV_REST_API_URL` and `KV_REST_API_TOKEN` (Vercel KV /
-Upstash Redis) so the fingerprint→name map is shared across serverless instances.
-Without them it falls back to per-instance memory, which is fine locally but is lost
-on cold starts.
+Asset and API paths are relative, so the site works mounted at `/` or at a subpath
+like `/projects/incognito-tracking/` — as long as the page is reached with a trailing
+slash (mount it behind a rewrite that preserves one).
+
+**Production needs a shared store.** Set `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+(Vercel KV / Upstash Redis) so the fingerprint→name map survives across serverless
+instances and cold starts. Without them the demo falls back to per-instance memory,
+which works for `node server.js` locally but will forget people in production.
+
+## The site
+
+`public/index.html` is the live demo plus a short explanation and the list of sites
+observed doing this; `public/about.html` has the video walkthrough and the detailed
+mechanism writeup. Styling follows the
+[Cognition brand](https://old.cognition.ai/brand) (IBM Plex, Devin palette).
 
 ## Credits
 

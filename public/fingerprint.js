@@ -10,9 +10,13 @@ async function sha256Hex(str) {
 // --- Audio: the AliExpress/FingerprintJS method (offline, no mic) ---
 function audioFingerprint() {
   return new Promise(resolve => {
+    // Rendering can silently never complete (suspended audio stack, locked-down
+    // browser); bail out rather than leaving the page stuck on "reading…".
+    const timer = setTimeout(() => resolve('audio-timeout'), 3000);
+    const done = v => { clearTimeout(timer); resolve(v); };
     try {
       const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-      if (!Ctx) return resolve('no-audio');
+      if (!Ctx) return done('no-audio');
       const ctx = new Ctx(1, 44100, 44100);
       const osc = ctx.createOscillator();
       osc.type = 'triangle';
@@ -31,10 +35,10 @@ function audioFingerprint() {
         const data = e.renderedBuffer.getChannelData(0);
         let sum = 0;
         for (let i = 4500; i < 5000; i++) sum += Math.abs(data[i]);
-        resolve(sum.toString());
+        done(sum.toString());
       };
     } catch (e) {
-      resolve('audio-err');
+      done('audio-err');
     }
   });
 }
@@ -75,10 +79,11 @@ function webglFingerprint() {
 // --- Static hardware/OS attributes ---
 function staticAttrs() {
   const n = navigator, s = screen;
+  // devicePixelRatio is deliberately excluded: page zoom changes it, and zoom is
+  // per-profile, so including it would break recognition for anyone who zoomed.
   return [
     s.width + 'x' + s.height,
     s.colorDepth,
-    window.devicePixelRatio,
     n.hardwareConcurrency,
     n.deviceMemory || '',
     n.platform,
@@ -94,14 +99,15 @@ async function computeFingerprint() {
   const audio = await audioFingerprint();
   const webgl = webglFingerprint();
   const attrs = staticAttrs();
+  const canvas = canvasFingerprint();
   // Hardware-level: survives incognito, cookie-clear, and often a different browser.
   const hardware = await sha256Hex([audio, webgl, attrs].join('##'));
   // Full: adds canvas (browser-specific), most precise within one browser family.
-  const full = await sha256Hex([audio, webgl, attrs, canvasFingerprint()].join('##'));
+  const full = await sha256Hex([audio, webgl, attrs, canvas].join('##'));
   return {
     hardware,
     full,
-    components: { audio, webgl, attrs, canvasLen: canvasFingerprint().length },
+    components: { audio, webgl, attrs, canvasLen: canvas.length },
   };
 }
 
