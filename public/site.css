@@ -28,7 +28,7 @@ body {
 }
 
 /* --- type --- */
-h1, h2, h3, .eyebrow, button, .btn, nav a, th, .tag, .mark {
+h1, h2, h3, .eyebrow, button, .btn, th, .tag {
   font-family: var(--sans);
   font-feature-settings: 'ss01';
 }
@@ -50,13 +50,18 @@ a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1p
 a:hover { color: var(--accent); text-decoration-color: var(--accent); }
 code, .mono { font-family: var(--mono); font-size: 0.92em; }
 
-/* --- one-screen demo shell (no page scroll; only /about scrolls) --- */
+/* --- one-screen demo shell (the page itself never scrolls; only /about does) --- */
 body.oneScreen { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
 body.oneScreen main {
-  flex: 1; min-height: 0; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: center;
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column;
   width: 100%; max-width: 720px; margin: 0 auto; padding: 24px 24px 8px;
 }
+/* auto margins centre the content but collapse to 0 once it is taller than the
+   viewport, so a short window can still reach the name field by scrolling here
+   rather than clipping it (justify-content: center would clip both ends). */
+body.oneScreen main > :first-child { margin-top: auto; }
+body.oneScreen main > :last-child { margin-bottom: auto; }
 .wrap { max-width: 720px; margin: 0 auto; padding: 44px 24px 64px; }
 
 /* --- cards --- */
@@ -188,7 +193,17 @@ body.oneScreen footer {
   flex: none; width: 100%; max-width: 720px; margin: 0 auto;
   padding: 14px 24px 18px; border-top: 1px solid var(--line);
 }
-@media (max-width: 560px) {
+/* squeeze the hero so the whole demo still fits a laptop window */
+@media (max-height: 780px) {
+  body.oneScreen h1 { font-size: 32px; }
+  body.oneScreen .lede { font-size: 16px; }
+  body.oneScreen .eyebrow { margin-bottom: 12px; }
+  body.oneScreen .card { padding: 20px; }
+  body.oneScreen main { padding-top: 16px; }
+}
+@media (max-width: 560px), (max-height: 620px) {
   body.oneScreen { height: auto; min-height: 100dvh; overflow: auto; }
+  body.oneScreen main { overflow: visible; }
   footer .badge { margin-right: 0; }
 }
+@media (max-width: 560px) { footer .badge { margin-right: 0; } }
