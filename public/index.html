@@ -170,7 +170,7 @@
   function placeLabel(geo) {
     if (!geo || !geo.city) return '';
     const where = [geo.city, geo.region, geo.country].filter(Boolean).map(escapeHtml).join(', ');
-    return 'near ' + flag(geo.country) + ' ' + where;
+    return ['near', flag(geo.country), where].filter(Boolean).join(' ');
   }
 
   function flag(cc) {
