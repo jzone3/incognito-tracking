@@ -4,16 +4,16 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>About — Incognito Tracking</title>
-<meta name="description" content="How silent audio + graphics device fingerprinting works, what the AliExpress story actually was, and how this demo re-identifies you with no cookies." />
+<meta name="description" content="Pulling on a thread about AliExpress led to permissionless device fingerprinting: silent audio + graphics signals that re-identify you with no cookies, no login and no prompt. How it works, and which sites do it." />
 <link rel="stylesheet" href="site.css" />
 </head>
 <body>
 <div class="wrap">
   <p class="eyebrow"><a href="./" style="text-decoration:none;color:inherit">← Incognito Tracking</a></p>
   <h1>About this demo</h1>
-  <p class="lede">A viral post claimed AliExpress was secretly recording audio. It wasn’t.
-  What’s actually happening is more interesting, entirely permissionless, and follows you
-  into incognito.</p>
+  <p class="lede">We pulled on a thread about an AliExpress tab breaking someone’s Bluetooth
+  headphones, and found the thing underneath it: a way to identify your machine that needs no
+  permission, sets no cookie, and follows you into incognito. Twenty major sites do it today.</p>
 
   <div class="card">
     <h2>Watch it happen</h2>
@@ -27,114 +27,57 @@
   </div>
 
   <div class="card">
-    <h2>What the original story really was</h2>
-    <p>Someone noticed their Bluetooth headphones stopped switching between devices whenever an
-    AliExpress tab was open. The tab was holding an audio output stream open. That got relayed
-    online as “AliExpress is secretly recording you,” which is wrong in a specific way worth
-    understanding:</p>
+    <h2>How we built this</h2>
+    <p>The whole demo is two files: a page that measures your device, and a server that keeps a
+    map from those measurements to a name. There is no cookie, no account, no client-side
+    storage of any kind.</p>
+
+    <h3>1. Measure the device</h3>
+    <p><a href="https://github.com/jzone3/incognito-tracking/blob/master/public/fingerprint.js"><code>public/fingerprint.js</code></a>
+    collects signals any page can read without asking:</p>
 <pre class="ascii">
- what people heard              what is actually happening
- ─────────────────────          ──────────────────────────────────────────────
- microphone recording           speaker-side playback only, at zero volume
- audio uploaded to servers      only a ~64-character hash leaves your machine
- works silently, no consent     true — and that is the actual problem
+ audio     OfflineAudioContext: a ~10 kHz tone through a DynamicsCompressor,
+           rendered into a buffer (never to a speaker), samples summed.
+           Your CPU and audio stack round the maths their own way.
+ webgl     unmasked GPU vendor + renderer string
+ screen    resolution, colour depth
+ device    CPU core count, platform, timezone
+ canvas    how your machine rasterises one line of text (precise, but
+           browser-specific — so it is kept in a separate hash)
 </pre>
-    <p>A web page cannot capture your microphone without <code>getUserMedia</code>, which forces a
-    permission prompt and lights the recording indicator in your tab and OS. Across 20
-    instrumented sites — with every microphone-capable API hooked before any page script ran —
-    there were zero calls. The fingerprinting graph has no input node at all.</p>
-  </div>
 
-  <div class="card">
-    <h2>The mechanism, in detail</h2>
-    <h3>1. Generate a signal</h3>
-    <p>The script creates an oscillator (a pure ~10 kHz tone) and runs it through a
-    <code>DynamicsCompressor</code> — a non-linear processor whose output depends on floating-point
-    maths performed by your CPU and the browser’s audio stack.</p>
-
-    <h3>2. Render it where nobody can hear</h3>
-    <p>Usually this happens in an <code>OfflineAudioContext</code>: the graph is computed straight
-    into a buffer, faster than realtime, and never sent to a speaker. Nothing plays, nothing is
-    recorded, no permission is required.</p>
-
-    <h3>3. Read the processed samples</h3>
-    <p>The script sums the absolute values of a slice of the rendered buffer. Different devices
-    produce values that differ in the low-order digits — enough to distinguish machines, and
-    stable enough on the same machine to be an identifier.</p>
-
-    <h3>4. Combine and hash</h3>
-    <p>That number is mixed with other permissionless signals — your GPU’s renderer string via
-    WebGL, screen size and colour depth, CPU core count, platform, timezone, and (for the more
-    precise variant) how your machine rasterises a line of canvas text — then hashed with SHA-256.</p>
+    <h3>2. Hash it twice</h3>
 <pre class="ascii">
- hardware id = sha256( audio ## webgl ## screen/cpu/platform/timezone )
- full id     = sha256( audio ## webgl ## screen/cpu/platform/timezone ## canvas )
+ hardware id = sha256( audio ## webgl ## screen/device )
+ full id     = sha256( audio ## webgl ## screen/device ## canvas )
 
- hardware id → survives a new browser profile, sometimes a different browser
+ hardware id → survives a new profile, incognito, often a different browser
  full id     → more unique, but changes between browser engines
 </pre>
     <p class="small">Deliberately excluded: <code>devicePixelRatio</code>. It changes with page
-    zoom, and zoom is per-profile, so including it would break recognition for anyone who had
-    zoomed in.</p>
-  </div>
+    zoom, and zoom is per-profile, so it would break recognition for anyone who had zoomed in.</p>
 
-  <div class="card">
-    <h2>The badge, and the city</h2>
-    <p>The demo gives every device an emoji and a colour. Neither is stored anywhere: they are
-    read straight out of the first bytes of the hardware hash, so the same machine draws the same
-    badge in a normal window, in incognito, and often in a completely different browser. It is the
-    same link the name lookup makes, just visible at a glance.</p>
+    <h3>3. Recognize, and prove it</h3>
+    <p><a href="https://github.com/jzone3/incognito-tracking/blob/master/api/fp.js"><code>api/fp.js</code></a>
+    stores <code>hash → { name, badge }</code>. The badge is the honest part: the emoji and colour
+    are rolled <em>at random</em> the first time the server sees a device and then kept in that
+    record. They are not computed from the hash, so two browsers cannot arrive at the same badge
+    by coincidence:</p>
 <pre class="ascii">
- hardware id  5f1c9a…      badge  = emoji[ 0x5f1c % 24 ]  +  colour[ 0x9a… % 8 ]
-                                    same device → same badge, every time
+ normal window          incognito window
+ ─────────────          ────────────────
+ hash 5f1c9a…    ──►    hash 5f1c9a…          same device, same hash
+ server rolls 🦦        server looks up 🦦    the badge only matches because
+ stores it + "Jared"    returns "Jared"       the server recognized the hash
 </pre>
-    <p>The city comes from your IP address, which every request carries by definition — there is
-    no <code>navigator.geolocation</code> call, so there is no location prompt to decline and no
-    indicator. Hosted on Vercel, the edge network hands the server a city and region header before
-    any code of mine runs; run locally it falls back to a keyless IP lookup. It is city-level,
-    frequently wrong by a metro area, and this demo never stores it.</p>
-    <p class="small">Put together, that is the uncomfortable part: a page you have never logged
-    into, that set no cookie, can greet you with a stable identity and a rough location in the
-    first few hundred milliseconds.</p>
-  </div>
-
-  <div class="card">
-    <h2>The realtime variant — the Bluetooth bug</h2>
-    <p>A minority of sites (AliExpress and, surprisingly, eBay in my run) don’t use the offline
-    path. They create a <em>realtime</em> <code>AudioContext</code> and connect the graph through a
-    zero-gain node to <code>context.destination</code>, then never close it.</p>
-<pre class="ascii">
- (A) classic offline hash              (B) realtime destination-connected
-     OfflineAudioContext                   realtime AudioContext
-     osc → compressor → render             osc → … → gain(0) → DESTINATION
-     runs once, releases the device        stays RUNNING for the tab's life
-     no side effects                      OS thinks audio is playing
-                                          → holds the Bluetooth A2DP link
-                                          → multipoint switching stops working
-</pre>
-    <p>Why realtime at all? Because a graph is only actively rendered while it is connected to the
-    destination, and the measurement callbacks these scripts use only fire during that rendering.
-    The speaker hookup is what drives their loop. Muting the tab doesn’t help: mute applies to
-    media elements, not Web Audio graphs.</p>
-    <p class="small">To be precise about what I did and didn’t observe: the realtime path keeps an
-    output stream and the local measurement loop alive. I did <em>not</em> observe audio, or
-    continuous streams of data, being uploaded anywhere.</p>
-  </div>
-
-  <div class="card">
-    <h2>Why this is worth worrying about</h2>
-    <p>Not because of microphones — because it is a super-cookie that you cannot see, clear, or
-    decline. It needs no consent banner and shows no indicator. It survives incognito, clearing
-    cookies, and often a change of browser. And because the same handful of anti-fraud vendors
-    supply it to hundreds of unrelated sites, one stable ID can link the same person across all
-    of them.</p>
-    <p>To be fair about the other side: these scripts are mostly there to catch fraud and bots,
-    and a fingerprint is genuinely useful for that. The problem is that the exact same signal
-    works just as well for tracking, and nothing in the browser tells you which is happening.</p>
-    <p class="small">Honest limits of this demo: it maps a name <em>you typed</em> to a device hash
-    — it doesn’t discover your real identity out of thin air (a real tracker gets that by linking
-    the fingerprint to an account or an ad-network profile). Matching across two different browser
-    engines is unreliable, especially on machines using software rendering.</p>
+    <p>Location is read off the IP address every request carries anyway — no
+    <code>navigator.geolocation</code> call, so there is no prompt to decline. City-level, often
+    wrong by a metro area, and never stored.</p>
+    <p class="small">Honest limits: this maps a name <em>you typed</em> to a device hash — it
+    doesn’t discover your real identity out of thin air (a real tracker does that by linking the
+    fingerprint to an account or an ad-network profile). Matching across two different browser
+    engines is unreliable, especially on machines using software rendering. And no microphone is
+    involved anywhere: the audio never leaves the browser’s own pipeline.</p>
   </div>
 
   <div class="card">
@@ -156,7 +99,7 @@
         </tr>
         <tr>
           <td><span class="dot shipped"></span>Shipped audio-fingerprinting code that didn’t fire
-            during my visit</td>
+            during our visit</td>
           <td class="what">alibaba.com, lazada.com (same Alibaba script), amazon.com (via AWS WAF)</td>
         </tr>
         <tr>
@@ -174,7 +117,7 @@
     path open exactly like AliExpress, while Chinese JD.com came back clean. It’s the shared
     anti-fraud vendors (Alibaba’s fireyejs, HUMAN/PerimeterX, AWS WAF) that spread it — which is
     also what makes one fingerprint useful for linking you across unrelated sites.
-    <b>No site I tested touched the microphone.</b></p>
+    <b>No site we tested touched the microphone.</b></p>
   </div>
 
   <div class="card">
@@ -185,7 +128,9 @@
       <li><a href="https://github.com/fingerprintjs/fingerprintjs/blob/master/src/sources/audio.ts">FingerprintJS’s audio source</a> — the canonical open implementation of the offline variant</li>
       <li><a href="https://github.com/openwpm/OpenWPM">OpenWPM</a> and Princeton’s <a href="https://audiofingerprint.openwpm.com/">audio fingerprint test page</a>, which first found this in the wild in 2016</li>
       <li><a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1863193">The related Firefox bug</a></li>
-      <li><a href="https://github.com/jzone3/incognito-tracking">This demo’s source</a></li>
+      <li><a href="https://github.com/jzone3/incognito-tracking">This demo’s source</a>, and the
+        <a href="https://app.devin.ai/sessions/03b01637533548838aaaa42e76ee1608?tab=pr%3A3">Devin session</a>
+        that investigated and built it</li>
     </ul>
   </div>
 

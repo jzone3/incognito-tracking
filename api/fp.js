@@ -1,11 +1,35 @@
 // POST /api/fp
-//   { op: 'identify', hardware, full } -> { name, matchedOn, backend, geo } | { name: null, geo }
-//   { op: 'register', name, hardware, full } -> { ok }
+//   { op: 'identify', hardware, full } -> { name, avatar, matchedOn, backend, geo }
+//   { op: 'register', name, hardware, full } -> { ok, avatar }
 //
 // Both operations live in ONE function on purpose: separate Vercel functions get
 // separate module instances, so the in-memory fallback store would never be
 // shared between a register and a later identify.
 const store = require('./_store');
+
+// The badge is picked at random the first time a device is seen and then kept in
+// its record — it is not derived from the hash. That makes the demo honest about
+// what is happening: when incognito shows the same otter, it is because the
+// server recognised the fingerprint and looked the otter up, not because both
+// windows recomputed it locally.
+const EMOJI = [
+  '\u{1F98A}', '\u{1F419}', '\u{1F98B}', '\u{1F42C}', '\u{1F984}', '\u{1F43F}',
+  '\u{1F989}', '\u{1F41D}', '\u{1F438}', '\u{1F427}', '\u{1F98E}', '\u{1F980}',
+  '\u{1F42A}', '\u{1F992}', '\u{1F9A9}', '\u{1F99C}', '\u{1F995}', '\u{1F9AB}',
+  '\u{1F9A6}', '\u{1F994}', '\u{1F987}', '\u{1F41A}', '\u{1F41E}', '\u{1F997}',
+];
+const COLORS = [
+  { name: 'violet', hex: '#3969ca' }, { name: 'teal', hex: '#21c19a' },
+  { name: 'blue', hex: '#0294de' }, { name: 'amber', hex: '#d98314' },
+  { name: 'rose', hex: '#d2456d' }, { name: 'indigo', hex: '#5b45c8' },
+  { name: 'moss', hex: '#4f8a3d' }, { name: 'clay', hex: '#b4593a' },
+];
+
+function randomAvatar() {
+  const c = pick(COLORS);
+  return { emoji: pick(EMOJI), color: c.hex, colorName: c.name };
+}
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.statusCode = 405; return res.end('method'); }
@@ -15,24 +39,29 @@ module.exports = async (req, res) => {
   try {
     if (op === 'register') {
       if (!name || !hardware) { res.statusCode = 400; return json(res, { ok: false }); }
-      await store.set('hw:' + hardware, name);
-      if (full) await store.set('full:' + full, name);
-      return json(res, { ok: true });
+      // Keep whatever badge this device was already given; only the name is new.
+      const prev = await lookup(hardware, full);
+      const rec = { name, avatar: (prev && prev.rec.avatar) || randomAvatar() };
+      await save(hardware, full, rec);
+      return json(res, { ok: true, avatar: rec.avatar });
     }
 
     if (op === 'identify') {
       // Precise full (device + browser) match first, then the hardware-only match
       // that survives incognito / cookie-clear / another browser on the same machine.
       const geo = await lookupGeo(req);
-      if (full) {
-        const n = await store.get('full:' + full);
-        if (n) return json(res, { name: n, matchedOn: 'full', backend: store.backend, geo });
+      const hit = await lookup(hardware, full);
+      if (hit) {
+        return json(res, {
+          name: hit.rec.name || null, avatar: hit.rec.avatar,
+          matchedOn: hit.matchedOn, backend: store.backend, geo,
+        });
       }
-      if (hardware) {
-        const n = await store.get('hw:' + hardware);
-        if (n) return json(res, { name: n, matchedOn: 'hardware', backend: store.backend, geo });
-      }
-      return json(res, { name: null, backend: store.backend, geo });
+      // First sighting: mint a badge for this device and remember it, so the
+      // next context (incognito, cleared cookies, another browser) gets it back.
+      const rec = { name: null, avatar: randomAvatar() };
+      if (hardware) await save(hardware, full, rec);
+      return json(res, { name: null, avatar: rec.avatar, backend: store.backend, geo });
     }
 
     res.statusCode = 400;
@@ -42,6 +71,36 @@ module.exports = async (req, res) => {
     return json(res, { error: 'store unavailable' });
   }
 };
+
+async function lookup(hardware, full) {
+  if (full) {
+    const rec = parseRec(await store.get('full:' + full));
+    if (rec) return { rec, matchedOn: 'full' };
+  }
+  if (hardware) {
+    const rec = parseRec(await store.get('hw:' + hardware));
+    if (rec) return { rec, matchedOn: 'hardware' };
+  }
+  return null;
+}
+
+async function save(hardware, full, rec) {
+  const value = JSON.stringify(rec);
+  await store.set('hw:' + hardware, value);
+  if (full) await store.set('full:' + full, value);
+}
+
+// Records are JSON; a bare string is a name written by an earlier version.
+function parseRec(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try {
+    const o = JSON.parse(raw);
+    return o && typeof o === 'object' ? o : { name: String(o), avatar: randomAvatar() };
+  } catch {
+    return { name: raw, avatar: randomAvatar() };
+  }
+}
 
 // Where the request came from, from the IP alone — no geolocation permission
 // prompt, nothing the visitor can decline. On Vercel the edge network has
