@@ -131,10 +131,11 @@ which works for `node server.js` locally but will forget people in production.
 
 ## The site
 
-`public/index.html` is the live demo plus a short explanation and the list of sites
-observed doing this; `public/about.html` has the video walkthrough and the detailed
-mechanism writeup. Styling follows the
-[Cognition brand](https://old.cognition.ai/brand) (IBM Plex, Devin palette).
+`public/index.html` is the live demo on a single non-scrolling screen, with the
+mechanism behind a `(?)` popup; `public/about.html` has the video walkthrough, the
+detailed writeup and the list of sites observed doing this. Styling is system fonts
+only — no webfont CDN, which would be a poor look on a page about silent
+third-party requests.
 
 ## Credits
 

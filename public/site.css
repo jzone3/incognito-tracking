@@ -1,7 +1,7 @@
-/* Typography and palette follow cognition.ai: a neo-grotesque for headings and
-   UI, a text serif for prose, Geist Mono for machine values, warm off-white
-   paper, near-black ink, electric blue accent. NB International Pro and STK
-   Bureau Serif are licensed, so the closest open faces stand in for them. */
+/* Editorial styling with system fonts only — nothing is fetched from a font CDN,
+   which would be an odd look on a page about silent third-party tracking. A
+   grotesque for headings and UI, a text serif for prose, mono for machine
+   values; warm off-white paper, near-black ink, electric blue accent. */
 :root {
   --paper: #f7f6f5;
   --surface: #ffffff;
@@ -11,9 +11,10 @@
   --line: rgba(0, 0, 0, 0.09);
   --accent: #2200ff;
   --ok: #21c19a;
-  --sans: 'Inter Tight', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+    Helvetica, Arial, sans-serif;
+  --serif: ui-serif, Charter, 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
@@ -28,13 +29,17 @@ body {
 }
 
 /* --- type --- */
-h1, h2, h3, .eyebrow, button, .btn, th, .tag {
+h1, h2, h3, .sub, .eyebrow, button, .btn, th, .tag {
   font-family: var(--sans);
   font-feature-settings: 'ss01';
 }
 h1 {
   font-weight: 500; font-size: clamp(28px, 4.6vw, 44px); line-height: 1.04;
-  letter-spacing: -0.025em; margin: 0 0 14px;
+  letter-spacing: -0.025em; margin: 0 0 6px;
+}
+.sub {
+  font-weight: 400; font-size: clamp(19px, 2.5vw, 26px); line-height: 1.15;
+  letter-spacing: -0.018em; color: var(--faint); margin: 0 0 16px;
 }
 h2 { font-weight: 500; font-size: 20px; letter-spacing: -0.02em; margin: 0 0 10px; }
 h3 { font-weight: 500; font-size: 15px; letter-spacing: -0.01em; margin: 18px 0 6px; }
@@ -196,6 +201,7 @@ body.oneScreen footer {
 /* squeeze the hero so the whole demo still fits a laptop window */
 @media (max-height: 780px) {
   body.oneScreen h1 { font-size: 32px; }
+  body.oneScreen .sub { font-size: 19px; margin-bottom: 12px; }
   body.oneScreen .lede { font-size: 16px; }
   body.oneScreen .eyebrow { margin-bottom: 12px; }
   body.oneScreen .card { padding: 20px; }
