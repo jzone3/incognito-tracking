@@ -7,46 +7,47 @@
 <meta name="description" content="Live demo: a website recognizes you in incognito, after clearing cookies, and often in another browser — using only a silent audio + graphics device fingerprint. No login, no cookies, no microphone." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&family=IBM+Plex+Sans+Condensed:wght@300;400;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="site.css" />
 </head>
-<body>
-<header>
-  <div class="bar">
-    <a class="mark" href="./">Incognito Tracking</a>
-    <nav>
-      <a href="./">Demo</a>
-      <a href="about.html">About</a>
-      <a href="https://github.com/jzone3/incognito-tracking">Source</a>
-    </nav>
-  </div>
-</header>
-
-<div class="wrap">
+<body class="oneScreen">
+<main>
+  <p class="eyebrow">Incognito Tracking</p>
   <h1>This site knows who you are.<br />It never asked, and never set a cookie.</h1>
   <p class="lede">Type your name once. Then open this exact URL in an incognito window,
   after clearing your cookies, or in another browser on the same machine — it still
-  greets you by name. No login, no cookies, no local storage, no microphone.</p>
+  greets you by name.</p>
 
   <div class="card">
+    <div class="cardHead">
+      <h2>Who you are</h2>
+      <button class="help" id="helpBtn" aria-label="How it works" title="How it works">?</button>
+    </div>
     <div id="app" class="small">Reading your device fingerprint…</div>
     <div class="ids mono">
       <div><b>hardware id</b> <span class="val" id="hwid">…</span></div>
       <div><b>full id</b> <span class="val" id="fullid">…</span></div>
     </div>
     <p class="small" style="margin-top:16px">
-      The emoji badge is read out of your device hash, so it follows you between browsers;
-      the city is read off your IP, which needs no permission prompt. Neither is stored.
-    </p>
-    <p class="small">
       Inspired by <a href="https://x.com/joshuasteinman/status/2091529956539154583">this thread</a>
-      claiming AliExpress was “secretly recording audio.” It isn’t — there is no microphone
-      involved. What it actually does is play a signal you can’t hear and measure your hardware,
-      which is how this page recognizes you. <a href="about.html">Full explanation →</a>
+      claiming AliExpress was “secretly recording audio.” It isn’t — no microphone is involved.
+      It plays a signal you can’t hear and measures your hardware, which is exactly how this page
+      recognizes you. <a href="about.html">Full explanation, video and the sites doing it →</a>
     </p>
   </div>
+</main>
 
-  <div class="card">
+<footer>
+  <a class="badge" href="https://github.com/club-cog/built-by-devin"><img src="built-by-devin.svg" alt="Built by Devin" /></a>
+  <a href="about.html">About</a>
+  <a href="https://github.com/jzone3/incognito-tracking">GitHub</a>
+  <a href="https://x.com/imjaredz">@imjaredz</a>
+  <a href="https://x.com/joshuasteinman/status/2091529956539154583">Original tweet</a>
+</footer>
+
+<dialog id="how">
+  <div class="inner">
+    <button class="close" id="howClose" aria-label="Close">×</button>
     <h2>How it works</h2>
     <div class="flow">
       <div class="step">
@@ -79,60 +80,22 @@
 </pre>
     <p class="small" style="margin-top:14px">The <code>hardware id</code> leaves out
     browser-specific signals so it can survive a fresh profile; the <code>full id</code> adds
-    canvas rendering and is more precise but more browser-specific.</p>
+    canvas rendering and is more precise but more browser-specific. The emoji badge is read out
+    of the same hash; the city comes off your IP, which needs no prompt. Neither is stored.
+    <a href="about.html">More, including which sites do this →</a></p>
   </div>
-
-  <div class="card">
-    <h2>Sites doing this today</h2>
-    <p class="small">From a single instrumented run of 20 major shopping sites (Firefox +
-    Chromium, August 2026). Bot-detection scripts branch per session and region, so treat this
-    as “observed at least once,” not a permanent property of each site.</p>
-    <table>
-      <thead><tr><th>Behavior</th><th>Sites</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><span class="dot realtime"></span>Held a <b>live</b> audio path open to the speakers
-            (zero volume, never closed — this is what broke the original reporter’s Bluetooth)</td>
-          <td class="what">aliexpress.com, ebay.com</td>
-        </tr>
-        <tr>
-          <td><span class="dot offline"></span>Ran the one-shot offline audio hash</td>
-          <td class="what">temu.com, shein.com, shopee.com, dhgate.com, banggood.com, walmart.com, ebay.com</td>
-        </tr>
-        <tr>
-          <td><span class="dot shipped"></span>Shipped audio-fingerprinting code that didn’t fire
-            during my visit</td>
-          <td class="what">alibaba.com, lazada.com (same Alibaba script), amazon.com (via AWS WAF)</td>
-        </tr>
-        <tr>
-          <td><span class="dot general"></span>Other fingerprinting only (canvas, WebGL, device
-            attributes) — no audio</td>
-          <td class="what">taobao.com, tmall.com, wish.com</td>
-        </tr>
-        <tr>
-          <td><span class="dot clean"></span>Nothing observed</td>
-          <td class="what">jd.com, miniinthebox.com</td>
-        </tr>
-      </tbody>
-    </table>
-    <p class="small" style="margin-top:14px">It is not a China story: US eBay held the live audio
-    path open exactly like AliExpress, while Chinese JD.com came back clean. It’s the shared
-    anti-fraud vendors (Alibaba’s fireyejs, HUMAN/PerimeterX, AWS WAF) that spread it — which is
-    also what makes one fingerprint useful for linking you across unrelated sites.
-    <b>No site I tested touched the microphone.</b></p>
-  </div>
-
-  <footer>
-    <a class="badge" href="https://github.com/club-cog/built-by-devin"><img src="built-by-devin.svg" alt="Built by Devin" /></a>
-    <a href="https://github.com/jzone3/incognito-tracking">GitHub</a>
-    <a href="about.html">About</a>
-    <a href="https://x.com/imjaredz">@imjaredz</a>
-  </footer>
-</div>
+</dialog>
 
 <!-- relative paths so the demo works mounted at / or at /projects/<name>/ -->
 <script src="fingerprint.js"></script>
 <script>
+(() => {
+  const dlg = document.getElementById('how');
+  document.getElementById('helpBtn').onclick = () => dlg.showModal();
+  document.getElementById('howClose').onclick = () => dlg.close();
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+})();
+
 (async () => {
   const app = document.getElementById('app');
 

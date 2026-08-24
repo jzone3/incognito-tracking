@@ -7,22 +7,12 @@
 <meta name="description" content="How silent audio + graphics device fingerprinting works, what the AliExpress story actually was, and how this demo re-identifies you with no cookies." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&family=IBM+Plex+Sans+Condensed:wght@300;400;600&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="site.css" />
 </head>
 <body>
-<header>
-  <div class="bar">
-    <a class="mark" href="./">Incognito Tracking</a>
-    <nav>
-      <a href="./">Demo</a>
-      <a href="about.html" aria-current="page">About</a>
-      <a href="https://github.com/jzone3/incognito-tracking">Source</a>
-    </nav>
-  </div>
-</header>
-
 <div class="wrap">
+  <p class="eyebrow"><a href="./" style="text-decoration:none;color:inherit">← Incognito Tracking</a></p>
   <h1>About this demo</h1>
   <p class="lede">A viral post claimed AliExpress was secretly recording audio. It wasn’t.
   What’s actually happening is more interesting, entirely permissionless, and follows you
@@ -151,6 +141,46 @@
   </div>
 
   <div class="card">
+    <h2>Sites doing this today</h2>
+    <p class="small">From a single instrumented run of 20 major shopping sites (Firefox +
+    Chromium, August 2026). Bot-detection scripts branch per session and region, so treat this
+    as “observed at least once,” not a permanent property of each site.</p>
+    <table>
+      <thead><tr><th>Behavior</th><th>Sites</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="dot realtime"></span>Held a <b>live</b> audio path open to the speakers
+            (zero volume, never closed — this is what broke the original reporter’s Bluetooth)</td>
+          <td class="what">aliexpress.com, ebay.com</td>
+        </tr>
+        <tr>
+          <td><span class="dot offline"></span>Ran the one-shot offline audio hash</td>
+          <td class="what">temu.com, shein.com, shopee.com, dhgate.com, banggood.com, walmart.com, ebay.com</td>
+        </tr>
+        <tr>
+          <td><span class="dot shipped"></span>Shipped audio-fingerprinting code that didn’t fire
+            during my visit</td>
+          <td class="what">alibaba.com, lazada.com (same Alibaba script), amazon.com (via AWS WAF)</td>
+        </tr>
+        <tr>
+          <td><span class="dot general"></span>Other fingerprinting only (canvas, WebGL, device
+            attributes) — no audio</td>
+          <td class="what">taobao.com, tmall.com, wish.com</td>
+        </tr>
+        <tr>
+          <td><span class="dot clean"></span>Nothing observed</td>
+          <td class="what">jd.com, miniinthebox.com</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="small" style="margin-top:14px">It is not a China story: US eBay held the live audio
+    path open exactly like AliExpress, while Chinese JD.com came back clean. It’s the shared
+    anti-fraud vendors (Alibaba’s fireyejs, HUMAN/PerimeterX, AWS WAF) that spread it — which is
+    also what makes one fingerprint useful for linking you across unrelated sites.
+    <b>No site I tested touched the microphone.</b></p>
+  </div>
+
+  <div class="card">
     <h2>Sources and tools</h2>
     <ul>
       <li><a href="https://blog.laserphile.com/2026/08/aliexpress-webpage-keeping-multipoint.html">The original Bluetooth-multipoint writeup</a></li>
@@ -164,9 +194,10 @@
 
   <footer>
     <a class="badge" href="https://github.com/club-cog/built-by-devin"><img src="built-by-devin.svg" alt="Built by Devin" /></a>
-    <a href="https://github.com/jzone3/incognito-tracking">GitHub</a>
     <a href="./">Demo</a>
+    <a href="https://github.com/jzone3/incognito-tracking">GitHub</a>
     <a href="https://x.com/imjaredz">@imjaredz</a>
+    <a href="https://x.com/joshuasteinman/status/2091529956539154583">Original tweet</a>
   </footer>
 </div>
 </body>
