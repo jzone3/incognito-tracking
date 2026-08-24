@@ -22,6 +22,8 @@ Workaround that works:
 5. DevTools checks: F12, click Console/Network tabs by coordinates; type expressions with `xdotool type`.
 6. Header nav link clicks via xdotool sometimes don't register; falling back to `xdotool key ctrl+l` + typing the URL is reliable.
 7. Closing DevTools re-centers the page layout — re-screenshot and recompute click coordinates before clicking page buttons.
+8. Viewport-height assertions: Chrome window chrome (tab strip + URL bar ≈89px) + the Chrome-for-Testing banner (≈50px) eat ~139px, so pass `--window-size=1280,939` to get a true ~800px viewport (verify with `window.innerHeight` in the console). Page client coords = screen coords minus that ~139px offset.
+9. Tiny controls (e.g. the 18px `(?)` help button) can be missed by 1px with xdotool even when the screenshot looks centered — if a click seems to do nothing, aim a few px inside the visual center or debug with a temporary `document.addEventListener('click', e=>console.log(e.clientX,e.clientY,e.target))` in the console; don't conclude the handler is broken.
 
 ## Assertions worth checking
 - Fresh context: "new device" badge + 64-hex hardware/full ids (not "…").
