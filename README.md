@@ -128,9 +128,11 @@ Asset and API paths are relative, so the site works mounted at `/` or at a subpa
 like `/projects/incognito-tracking/` — as long as the page is reached with a trailing
 slash (mount it behind a rewrite that preserves one).
 
-**Production needs a shared store.** Set `KV_REST_API_URL` and `KV_REST_API_TOKEN`
-(Vercel KV / Upstash Redis) so the fingerprint→name map survives across serverless
-instances and cold starts. Without them the demo falls back to per-instance memory,
+**Production needs a shared store.** Set `KV_REST_API_URL` + `KV_REST_API_TOKEN`, or
+`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (whichever names your Redis
+integration injects), so the fingerprint→name map survives across serverless
+instances and cold starts. `/api/fp` responses report which is in use as
+`"backend": "kv"` or `"memory"`. Without them the demo falls back to per-instance memory,
 which works for `node server.js` locally but will forget people in production.
 
 ## The site
