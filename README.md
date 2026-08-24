@@ -13,17 +13,19 @@ your hardware behaves*.
 
 ## Why this exists
 
-This came out of investigating the viral claim that AliExpress was "secretly
-recording audio". That claim is **false** — websites cannot access the microphone
-without a permission prompt and a visible recording indicator, and instrumenting
-every mic-capable API (`getUserMedia`, `getDisplayMedia`, `MediaRecorder`,
-`SpeechRecognition`) across 20 major e-commerce sites showed zero calls.
+This came out of pulling on a thread about an AliExpress tab that kept breaking
+someone's Bluetooth headphones. Chasing *why* a shopping page needs a permanently
+open audio stream led to what is actually going on: sites play an *inaudible* tone
+through the Web Audio API and measure how your CPU and audio stack render it.
+Combined with WebGL and canvas quirks, that produces a stable device ID which
+behaves like a cookie you cannot delete, clear, or refuse — and it is standard
+anti-fraud infrastructure, shipped by a handful of vendors across the web.
 
-What is actually happening is more interesting, and this repo is the demonstration
-of why it matters: sites play an *inaudible* tone through the Web Audio API and
-measure how your CPU/audio stack renders it. Combined with WebGL and canvas
-rendering quirks, that produces a stable device ID that behaves like a cookie you
-cannot delete, clear, or refuse.
+Instrumenting 20 major e-commerce sites showed it running on most of them. It also
+puts the "secretly recording audio" version of the story to bed: every mic-capable
+API (`getUserMedia`, `getDisplayMedia`, `MediaRecorder`, `SpeechRecognition`) was
+hooked before any page script ran, and there were zero calls. Nothing here is a
+bypass — which is the point. There is no prompt to deny and no indicator to notice.
 
 ## How the fingerprint is built
 
@@ -48,11 +50,13 @@ The server ([`api/fp.js`](api/fp.js)) tries `full` first, then falls back
 to `hardware`. That fallback is the whole point: it is what links an incognito
 session back to your named identity.
 
-Two extras make the link visible without storing anything else:
+Two extras make the link visible:
 
-- **Badge** — an emoji and a colour indexed out of the first bytes of the `hardware`
-  hash, so the same machine draws the same badge in every browser and profile.
-  Derived client-side in `deviceAvatar()`; nothing is persisted.
+- **Badge** — an emoji and a colour rolled *at random* the first time the server
+  sees a device, then stored in that device's record (`{ name, avatar }`). It is
+  deliberately *not* derived from the hash: two contexts cannot land on the same
+  badge by coincidence, so seeing the same otter in incognito is proof the server
+  matched the fingerprint.
 - **City** — resolved from the request IP, which needs no permission and shows no
   indicator (unlike `navigator.geolocation`). On Vercel this comes from the
   `x-vercel-ip-city` / `-country-region` / `-country` edge headers; locally it falls

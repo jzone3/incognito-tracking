@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Incognito Tracking — a website that knows you with no cookies</title>
-<meta name="description" content="Live demo: a website recognizes you in incognito, after clearing cookies, and often in another browser — using only a silent audio + graphics device fingerprint. No login, no cookies, no microphone." />
+<meta name="description" content="Live demo of permissionless tracking: a website recognizes you in incognito, after clearing cookies, and often in another browser — from a silent audio + graphics device fingerprint. No login, no cookies, no prompt." />
 <link rel="stylesheet" href="site.css" />
 </head>
 <body class="oneScreen">
@@ -26,10 +26,11 @@
       <div><b>full id</b> <span class="val" id="fullid">…</span></div>
     </div>
     <p class="small" style="margin-top:16px">
-      Inspired by <a href="https://x.com/joshuasteinman/status/2091529956539154583">this thread</a>
-      claiming AliExpress was “secretly recording audio.” It isn’t — no microphone is involved.
-      It plays a signal you can’t hear and measures your hardware, which is exactly how this page
-      recognizes you. <a href="about.html">Full explanation, video and the sites doing it →</a>
+      No cookie, no login, no microphone. The page plays a signal you can’t hear and measures how
+      your hardware handles it. We found this pulling on
+      <a href="https://x.com/joshuasteinman/status/2091529956539154583">this thread</a> about an
+      AliExpress tab hijacking someone’s Bluetooth — 20 major sites do the same thing today.
+      <a href="about.html">How it was found, the video, and who does it →</a>
     </p>
   </div>
 </main>
@@ -76,9 +77,10 @@
 </pre>
     <p class="small" style="margin-top:14px">The <code>hardware id</code> leaves out
     browser-specific signals so it can survive a fresh profile; the <code>full id</code> adds
-    canvas rendering and is more precise but more browser-specific. The emoji badge is read out
-    of the same hash; the city comes off your IP, which needs no prompt. Neither is stored.
-    <a href="about.html">More, including which sites do this →</a></p>
+    canvas rendering and is more precise but more browser-specific. The badge is rolled at
+    random the first time this server sees your device and stored against that hash — so getting
+    the same one in incognito <em>is</em> the recognition. The city comes off your IP, which needs
+    no prompt. <a href="about.html">More, including which sites do this →</a></p>
   </div>
 </dialog>
 
@@ -111,11 +113,13 @@
     body: JSON.stringify(body),
   }).then(r => r.json());
 
-  const avatar = deviceAvatar(fp.hardware);
-
   const lookup = await api({
     op: 'identify', hardware: fp.hardware, full: fp.full, components: fp.components,
   });
+  // The badge comes back from the server: it was rolled at random the first time
+  // this device was seen and stored against the fingerprint. Seeing the same one
+  // in incognito is the recognition, made visible.
+  let avatar = lookup.avatar || { emoji: '❓', color: '#8a8a8a', colorName: 'unknown' };
   const place = placeSuffix(lookup.geo);
 
   if (lookup.name) {
@@ -145,7 +149,8 @@
     save.onclick = async () => {
       const v = name.value.trim();
       if (!v) return;
-      await api({ op: 'register', name: v, hardware: fp.hardware, full: fp.full });
+      const saved = await api({ op: 'register', name: v, hardware: fp.hardware, full: fp.full });
+      if (saved.avatar) avatar = saved.avatar;
       app.innerHTML =
         '<div class="who">' + face(avatar, 'lg') +
         '<div><p class="known">Saved. You are <b>' + escapeHtml(v) + '</b></p>' +
@@ -156,8 +161,6 @@
     name.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
   }
 
-  // The badge is drawn from the fingerprint hash, so it is the same shape and
-  // colour in every browser on this machine — the link, made visible.
   function face(a, size) {
     return '<span class="face ' + size + '" style="--c:' + a.color + '">' + a.emoji + '</span>';
   }
