@@ -120,17 +120,14 @@
   // this device was seen and stored against the fingerprint. Seeing the same one
   // in incognito is the recognition, made visible.
   let avatar = lookup.avatar || { emoji: '❓', color: '#8a8a8a', colorName: 'unknown' };
-  const place = placeSuffix(lookup.geo);
+  const place = placeLabel(lookup.geo);
 
   if (lookup.name) {
-    const via = lookup.matchedOn === 'full' ? 'an exact device + browser match'
-                                            : 'a hardware match across browsers/profiles';
-    app.innerHTML =
-      '<div class="who">' + face(avatar, 'lg') +
-      '<div><p class="known">I know you. You are <b>' + escapeHtml(lookup.name) + '</b></p>' +
-      '<p class="small"><span class="tag">recognized</span> via ' + via + place +
-      ' — no cookie was ever set.</p></div></div>' +
-      '<button class="ghost" id="forget">This isn\'t me / reset</button>';
+    const via = lookup.matchedOn === 'full' ? 'exact device + browser match'
+                                            : 'hardware match across browsers';
+    app.innerHTML = known('I know you. You are', lookup.name, [
+      '<span class="tag">recognized</span>', via, place, 'no cookie was ever set',
+    ]) + '<button class="linkish" id="forget">This isn\'t me — reset</button>';
     document.getElementById('forget').onclick = showForm;
   } else {
     showForm();
@@ -138,9 +135,9 @@
 
   function showForm() {
     app.innerHTML =
-      '<p class="small"><span class="tag new">new device</span> I don\'t recognize this device yet — ' +
-      'but I already know it as the <b>' + avatar.colorName + ' ' + avatar.emoji + '</b> device' +
-      place + '.</p>' +
+      '<p class="meta"><span class="tag new">new device</span> I don\'t recognize you yet — ' +
+      'but this machine is already the <b>' + avatar.colorName + ' ' + avatar.emoji +
+      '</b> device' + (place ? ' · ' + place : '') + '</p>' +
       '<input id="name" placeholder="Type your name" autocomplete="off" />' +
       '<button id="save">Remember me</button>';
     const save = document.getElementById('save');
@@ -151,25 +148,29 @@
       if (!v) return;
       const saved = await api({ op: 'register', name: v, hardware: fp.hardware, full: fp.full });
       if (saved.avatar) avatar = saved.avatar;
-      app.innerHTML =
-        '<div class="who">' + face(avatar, 'lg') +
-        '<div><p class="known">Saved. You are <b>' + escapeHtml(v) + '</b></p>' +
-        '<p class="small">Now open this URL in an incognito window — or clear your cookies, ' +
-        'or try another browser on this machine. The same ' + avatar.emoji +
-        ' badge will come back with you.</p></div></div>';
+      app.innerHTML = known('Saved. You are', v, [
+        'now open this URL in incognito, or clear your cookies, or use another browser — the ' +
+        avatar.emoji + ' badge comes back with you',
+      ]);
     };
     name.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
   }
 
-  function face(a, size) {
-    return '<span class="face ' + size + '" style="--c:' + a.color + '">' + a.emoji + '</span>';
+  // Avatar, headline name, then one quiet dot-separated line of detail.
+  function known(lead, name, meta) {
+    return '<div class="who">' +
+      '<span class="face lg" style="--c:' + avatar.color + '">' + avatar.emoji + '</span>' +
+      '<div class="whoText"><p class="lead">' + lead + '</p>' +
+      '<p class="name">' + escapeHtml(name) + '</p>' +
+      '<p class="meta">' + meta.filter(Boolean).join(' <i>·</i> ') + '</p>' +
+      '</div></div>';
   }
 
   // City from the IP alone — no geolocation prompt, nothing to decline.
-  function placeSuffix(geo) {
+  function placeLabel(geo) {
     if (!geo || !geo.city) return '';
     const where = [geo.city, geo.region, geo.country].filter(Boolean).map(escapeHtml).join(', ');
-    return ', apparently near <b>' + flag(geo.country) + ' ' + where + '</b>';
+    return 'near ' + flag(geo.country) + ' ' + where;
   }
 
   function flag(cc) {
