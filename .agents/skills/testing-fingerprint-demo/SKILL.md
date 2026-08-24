@@ -33,3 +33,9 @@ Workaround that works:
 - /about.html: renders, `<video>` (demo.mp4, poster demo-poster.png) plays — click the play control and confirm the time counter advances; no audio track is expected.
 - Assets site.css / built-by-devin.svg / demo-poster.png / demo.mp4 all 200 with correct content-type.
 - Secure-context guard: on http://localhost the "This demo needs a secure context" message must NOT appear.
+
+## Testing a Vercel preview deployment
+- Preview URLs sit behind Vercel Authentication: open the share link (`/?_vercel_share=<token>`) FIRST in each browser context (normal AND incognito separately) — it 307s to `/` and sets an HttpOnly `_vercel_jwt` bypass cookie. curl: `curl -c jar '<share-url>'` then reuse `-b jar`.
+- The `_vercel_jwt` cookie and the Vercel preview toolbar are Vercel's, not the app's. The toolbar writes sessionStorage keys (`__vtkb-hide-key`, `vc-mfe-session-cleared`, `vc-dt-src`) and injects `feedback.js` requests — do NOT count these against the app's "no storage/no cookies" claims; check `Object.keys(sessionStorage)` to attribute them.
+- Without KV env vars the store is an in-process Map per serverless instance: identify can return `name:null` with the SAME hardware hash (cold-start amnesia — retry) vs a DIFFERENT hash (real fingerprint mismatch).
+- Newer UI additions worth asserting: emoji+color device badge (derived from hash, must be identical in normal and incognito) and IP-derived city line; api/fp response includes `matchedOn` and `geo`.
