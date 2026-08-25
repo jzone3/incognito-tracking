@@ -112,10 +112,13 @@ button.ghost:hover { background: transparent; color: var(--ink); border-color: v
   letter-spacing: -0.03em; line-height: 1.05; margin: 1px 0 5px;
 }
 .meta {
-  font-family: var(--sans); font-size: 13px; line-height: 1.6; color: var(--muted);
+  font-family: var(--sans); font-size: 13px; line-height: 1.7; color: var(--muted);
   margin: 0; letter-spacing: -0.005em;
 }
 .meta i { color: var(--faint); font-style: normal; margin: 0 3px; }
+/* status line above the name form: tag on its own row, roomy wrapping below */
+.status { margin: 2px 0 10px; line-height: 1; }
+.meta.intro { font-size: 14px; line-height: 1.7; margin: 0 0 4px; }
 .meta .tag { margin-right: 4px; vertical-align: 1px; }
 .meta b { font-weight: 500; color: var(--ink); }
 
