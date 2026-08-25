@@ -33,7 +33,7 @@ Workaround that works:
 - No `Set-Cookie` on any route (curl -si works). API is now a single `POST /api/fp` with `{op:'register'|'identify', ...}` (older branches used api/identify + api/register).
 - Relative paths: requests must be `fingerprint.js` / `api/fp` (page mountable at subpath).
 - /about.html: renders, `<video>` (demo.mp4, poster demo-poster.png) plays — click the play control and confirm the time counter advances; no audio track is expected.
-- Assets site.css / built-by-devin.svg / demo-poster.png / demo.mp4 all 200 with correct content-type.
+- Assets site.css / demo-poster.png / demo.mp4 all 200 with correct content-type.
 - Secure-context guard: on http://localhost the "This demo needs a secure context" message must NOT appear.
 
 ## Testing the Redis/KV store backends (api/_store.js)
