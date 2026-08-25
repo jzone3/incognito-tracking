@@ -123,7 +123,7 @@
     const via = lookup.matchedOn === 'full' ? 'exact device + browser match'
                                             : 'hardware match across browsers';
     app.innerHTML = known('I know you. You are', lookup.name, [
-      '<span class="tag">recognized</span>', via, place, 'no cookie was ever set',
+      '<span class="tag">recognized</span> ' + via, place, 'no cookie was ever set',
     ]) + '<button class="linkish" id="forget">This isn\'t me — reset</button>';
     document.getElementById('forget').onclick = showForm;
   } else {
@@ -133,9 +133,9 @@
   function showForm() {
     app.innerHTML =
       '<p class="status"><span class="tag new">new device</span></p>' +
-      '<p class="meta intro">I don\'t recognize you yet — ' +
+      '<p class="meta intro metaRow"><span>I don\'t recognize you yet — ' +
       'but this machine is already the <b>' + avatar.colorName + ' ' + avatar.emoji +
-      '</b> device' + (place ? ' · ' + place : '') + '</p>' +
+      '</b> device</span>' + (place ? '<span>' + place + '</span>' : '') + '</p>' +
       '<input id="name" placeholder="Type your name" autocomplete="off" />' +
       '<button id="save">Remember me</button>';
     const save = document.getElementById('save');
@@ -154,13 +154,15 @@
     name.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
   }
 
-  // Avatar, headline name, then one quiet dot-separated line of detail.
+  // Avatar, headline name, then one quiet line of detail. Each fragment is its own
+  // flex item so a wrap breaks between fragments, never mid-phrase.
   function known(lead, name, meta) {
     return '<div class="who">' +
       '<span class="face lg" style="--c:' + avatar.color + '">' + avatar.emoji + '</span>' +
       '<div class="whoText"><p class="lead">' + lead + '</p>' +
       '<p class="name">' + escapeHtml(name) + '</p>' +
-      '<p class="meta">' + meta.filter(Boolean).join(' <i>·</i> ') + '</p>' +
+      '<p class="meta metaRow">' +
+      meta.filter(Boolean).map(m => '<span>' + m + '</span>').join('') + '</p>' +
       '</div></div>';
   }
 

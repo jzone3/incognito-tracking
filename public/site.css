@@ -118,6 +118,10 @@ button.ghost:hover { background: transparent; color: var(--ink); border-color: v
   margin: 0; letter-spacing: -0.005em;
 }
 .meta i { color: var(--faint); font-style: normal; margin: 0 3px; }
+/* One fragment per line instead of a dot-separated run: a dot-joined line wraps
+   mid-phrase at narrow widths and leaves a dot stranded at the line start. */
+.metaRow { display: flex; flex-direction: column; align-items: flex-start; }
+.metaRow > span { display: block; }
 /* status line above the name form: tag on its own row, roomy wrapping below */
 .status { margin: 2px 0 10px; line-height: 1; }
 .meta.intro { font-size: 14px; line-height: 1.7; margin: 0 0 4px; }
