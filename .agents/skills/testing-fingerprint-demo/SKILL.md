@@ -36,8 +36,15 @@ Workaround that works:
 - Assets site.css / built-by-devin.svg / demo-poster.png / demo.mp4 all 200 with correct content-type.
 - Secure-context guard: on http://localhost the "This demo needs a secure context" message must NOT appear.
 
+## Testing the Redis/KV store backends (api/_store.js)
+- Backend selection: `REDIS_URL`/`KV_URL` → native `redis` client, `KV_REST_API_*`/`UPSTASH_REDIS_REST_*` → HTTP `kv`, else `memory`. Every `/api/fp` JSON response includes `"backend":"..."` — assert it explicitly.
+- Local real Redis: `docker run -d --rm -p 6399:6379 --name fpredis redis:7-alpine`, then `REDIS_URL=redis://localhost:6399 node server.js`. `docker exec fpredis redis-cli FLUSHALL` before a run; after registering, `keys '*'` must show `hw:<64hex>` and `full:<64hex>` whose value JSON contains the name + avatar.
+- The decisive persistence test: kill and restart the node server (same REDIS_URL), reload — recognition must survive (memory backend would forget). `verify.js` works unchanged against a Redis-backed server.
+- Note: even an `identify` of an unknown device persists an avatar record (`hw:`/`full:` keys with no name) — seeing such keys after a curl probe is expected, not a bug.
+- Cleanup: `docker stop fpredis` (--rm removes it). Gotcha: `pgrep -f`/`pkill -f <pattern>` in one-shot shells matches the shell's own command line containing the pattern — verify with `ps aux | grep 'patter[n]'` instead.
+
 ## Testing a Vercel preview deployment
 - Preview URLs sit behind Vercel Authentication: open the share link (`/?_vercel_share=<token>`) FIRST in each browser context (normal AND incognito separately) — it 307s to `/` and sets an HttpOnly `_vercel_jwt` bypass cookie. curl: `curl -c jar '<share-url>'` then reuse `-b jar`.
 - The `_vercel_jwt` cookie and the Vercel preview toolbar are Vercel's, not the app's. The toolbar writes sessionStorage keys (`__vtkb-hide-key`, `vc-mfe-session-cleared`, `vc-dt-src`) and injects `feedback.js` requests — do NOT count these against the app's "no storage/no cookies" claims; check `Object.keys(sessionStorage)` to attribute them.
 - Without KV env vars the store is an in-process Map per serverless instance: identify can return `name:null` with the SAME hardware hash (cold-start amnesia — retry) vs a DIFFERENT hash (real fingerprint mismatch).
-- Newer UI additions worth asserting: emoji+color device badge (derived from hash, must be identical in normal and incognito) and IP-derived city line; api/fp response includes `matchedOn` and `geo`.
+- Newer UI additions worth asserting: emoji+color device badge (assigned randomly by the server on first sight and stored with the record, so it must be identical in normal and incognito) and IP-derived city line; api/fp response includes `matchedOn` and `geo`.

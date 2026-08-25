@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "playwright": "^1.47.0"
+  },
+  "dependencies": {
+    "redis": "^6.2.1"
   }
 }
