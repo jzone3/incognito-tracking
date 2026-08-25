@@ -203,8 +203,8 @@ footer {
 }
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--ink); }
-footer .badge { margin-right: auto; display: block; }
-footer .badge img { display: block; height: 18px; }
+footer .badge { margin-right: auto; }
+footer .badge b { font-weight: 500; color: var(--ink); }
 .wrap footer { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 22px; }
 body.oneScreen footer {
   flex: none; width: 100%; max-width: 720px; margin: 0 auto;
