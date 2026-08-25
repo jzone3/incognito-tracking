@@ -103,15 +103,27 @@ button:hover, .btn:hover { background: var(--accent); }
 button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
 button.ghost:hover { background: transparent; color: var(--ink); border-color: var(--ink); }
 
-.known { font-size: 16px; color: var(--muted); margin: 0 0 4px; }
-.known b {
-  font-family: var(--sans); font-weight: 500; font-size: 34px; letter-spacing: -0.03em;
-  color: var(--ink); display: block; line-height: 1.05; margin: 2px 0 6px;
+/* recognized state: badge, then lead line / name / one line of detail */
+.who { display: flex; align-items: center; gap: 16px; }
+.whoText { min-width: 0; }
+.lead { font-size: 15px; color: var(--muted); margin: 0; }
+.name {
+  font-family: var(--sans); font-weight: 500; font-size: clamp(26px, 3.4vw, 34px);
+  letter-spacing: -0.03em; line-height: 1.05; margin: 1px 0 5px;
 }
+.meta {
+  font-family: var(--sans); font-size: 13px; line-height: 1.6; color: var(--muted);
+  margin: 0; letter-spacing: -0.005em;
+}
+.meta i { color: var(--faint); font-style: normal; margin: 0 3px; }
+.meta .tag { margin-right: 4px; vertical-align: 1px; }
+.meta b { font-weight: 500; color: var(--ink); }
 
-/* device badge: emoji + colour derived from the fingerprint hash */
-.who { display: flex; align-items: flex-start; gap: 18px; }
-.who > div { min-width: 0; }
+button.linkish {
+  margin-top: 14px; padding: 0; background: none; color: var(--muted);
+  font-size: 13px; text-decoration: underline; text-underline-offset: 3px;
+}
+button.linkish:hover { background: none; color: var(--ink); }
 .face {
   flex: none; display: grid; place-items: center;
   width: 40px; height: 40px; border-radius: 50%; font-size: 20px; line-height: 1;
