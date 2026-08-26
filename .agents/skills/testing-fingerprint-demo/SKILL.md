@@ -10,11 +10,18 @@ description: How to run and end-to-end test the incognito-tracking fingerprint r
 - Store is in-memory: restart the server to wipe registrations before each run.
 - `verify.js` needs Playwright; if not in repo node_modules use `NODE_PATH=/home/ubuntu/fp-demo/node_modules node verify.js` (chromium+firefox already downloaded there). Exit 0 + `SUMMARY incognito=true` = pass. `firefox=false` is expected on headless VMs (documented cross-engine limitation).
 
+## Testing the Safari Private Browsing path
+- `verify.js` has a WebKit scenario that injects `safari-protections.js` (a model of Safari 17+ advanced fingerprinting protection: audio noise ±0.001, salted canvas pixel noise, `screen` = viewport). Expect `SUMMARY … safari-protected=true`, meaning `hardware`/`full` changed and the coarse `soft` id matched with the "coarse device-class match — a guess" label.
+- Playwright WebKit needs `npx playwright install webkit`. On this VM host validation fails spuriously (`libgles2`/`gstreamer1.0-libav` are in fact installed) — run with `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1`.
+- WebKit quirk: `page.waitForFunction(...)` in a fresh context can kill the page ("Target page, context or browser has been closed"). Poll with `page.evaluate('typeof window.computeFingerprint === "function"')` instead when writing new WebKit scripts.
+- Playwright WebKit does NOT implement Safari's protections and reports this VM's Linux/Mesa reality behind a generic `Apple Inc.|Apple GPU` WebGL string; it is a proxy, never evidence about a real iPhone.
+- Killing the server: `pkill -f "node server.js"` and even `grep 'serve[r].js'` kill the *shell itself*, because the one-shot shell's own command line contains the pattern. Use `ps -eo pid,comm,args | awk '$2=="node" && $4 ~ /server\.js$/ {print $1}' | xargs -r kill`.
+
 ## CRITICAL: do not test the browser flow with the CDP browser automation tool
 The Devin browser tool applies per-target emulation (observed: `navigator.maxTouchPoints` = 1 in automated tabs vs 0 in real windows), which changes the static-attrs component and thus the hardware/full fingerprint. Registration from an automated tab will NOT match a real incognito window ("new device" instead of recognition) — a false failure.
 
 Workaround that works:
-1. Launch a clean Chrome instance: `DISPLAY=:0 setsid <chrome-binary> --user-data-dir=/tmp/chrome-clean --no-first-run --start-maximized http://localhost:8080 &` (find binary under /opt/.devin/chrome/...; do NOT reuse /home/ubuntu/.browser_data_dir — profile singleton lock).
+1. Launch a clean Chrome instance: `DISPLAY=:0 setsid <chrome-binary> --user-data-dir=/tmp/chrome-clean --no-first-run --start-maximized http://localhost:8080 &` (the binary is at a *versioned* path — `/opt/.devin/chrome/chrome/linux-<version>/chrome-linux64/chrome`, there is no `/opt/.devin/chrome/chrome/chrome`; locate it with `find /opt/.devin/chrome -name chrome -type f`. Do NOT reuse /home/ubuntu/.browser_data_dir — profile singleton lock).
 2. Drive it purely with xdotool + `import -window root` screenshots.
 3. Open incognito with real modifier key events (plain `xdotool key ctrl+shift+n` may be ignored):
    `xdotool keydown ctrl keydown shift; xdotool key n; xdotool keyup shift keyup ctrl` after clicking into the page to focus.
