@@ -1,5 +1,7 @@
 # incognito-tracking
 
+[![Built by Devin](https://raw.githubusercontent.com/club-cog/built-by-devin/main/badges/built-by-devin.svg)](https://devin.ai)
+
 **A website can recognize you in incognito, after you clear cookies, and often in a
 different browser — with no login, no cookies, and no permission prompt.**
 
@@ -151,7 +153,8 @@ third-party requests.
 
 ## Credits
 
-Built by Devin — see [club-cog/built-by-devin](https://github.com/club-cog/built-by-devin).
+Built by [Devin](https://devin.ai) — badge from
+[club-cog/built-by-devin](https://github.com/club-cog/built-by-devin).
 
 Prior art and background reading:
 
