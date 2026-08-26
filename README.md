@@ -109,6 +109,12 @@ collide constantly. So:
 - `hardware` and `full` are byte-for-byte unchanged, so records stored by earlier
   versions keep working and a client that sends no `soft` id behaves exactly as before.
 
+Note that `soft` is computed and sent by *every* browser, not only Safari — Safari is
+just the case where it is the only thing left. So on any browser, if `full` and
+`hardware` both miss and the device class collides with someone who registered, the
+guess can name the wrong person. That is the same tradeoff, and the same ambiguity
+guard and “a guess” label apply everywhere.
+
 There is a known way to attack the audio protection specifically — render the buffer
 repeatedly and average the noise out, as
 [Fingerprint.com demonstrated](https://fingerprint.com/blog/bypassing-safari-17-audio-fingerprinting-protection/).

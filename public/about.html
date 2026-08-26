@@ -93,7 +93,9 @@
     which is why this demo now falls back to the coarse <code>soft</code> id. That one is honest
     about what it is: it identifies a <em>kind</em> of device (same GPU strings, same core count,
     same platform, same timezone), not a device, so the page labels such a match “a guess”, and
-    the server refuses to use a coarse key at all once two different people share it.</p>
+    the server refuses to use a coarse key at all once two different people share it. Every
+    browser sends that coarse id, not just Safari — Safari is only where it is the last thing
+    standing — so a “guess” anywhere can name the wrong person.</p>
     <p class="small">Honest limits: this maps a name <em>you typed</em> to a device hash — it
     doesn’t discover your real identity out of thin air (a real tracker does that by linking the
     fingerprint to an account or an ad-network profile). Matching across two different browser

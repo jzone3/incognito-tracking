@@ -70,7 +70,10 @@ async function run(browser, label, opts = {}) {
       await D.page.click('#forget');
       await D.page.waitForSelector('#name');
     }
-    const wkName = NAME + '-wk';
+    // Deliberately stable across runs, unlike NAME: the coarse key is derived from
+    // device attributes only, so a fresh name on every run would make the key
+    // ambiguous (see softRecord) and every later run would fail.
+    const wkName = 'Jared-webkit';
     await D.page.fill('#name', wkName);
     await D.page.click('#save');
     await D.page.waitForTimeout(400);

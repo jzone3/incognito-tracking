@@ -44,7 +44,7 @@ module.exports = `
     return origToDataURL.apply(this, args);
   };
 
-  Object.defineProperty(screen, 'width', { get: () => window.innerWidth });
-  Object.defineProperty(screen, 'height', { get: () => window.innerHeight });
+  Object.defineProperty(screen, 'width', { get: () => window.innerWidth, configurable: true });
+  Object.defineProperty(screen, 'height', { get: () => window.innerHeight, configurable: true });
 })();
 `;
