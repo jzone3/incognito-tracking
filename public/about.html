@@ -47,13 +47,16 @@
            browser-specific — so it is kept in a separate hash)
 </pre>
 
-    <h3>2. Hash it twice</h3>
+    <h3>2. Hash it twice — and once more, coarsely</h3>
 <pre class="ascii">
  hardware id = sha256( audio ## webgl ## screen/device )
  full id     = sha256( audio ## webgl ## screen/device ## canvas )
+ soft id     = sha256( webgl ## device, minus screen size )
 
  hardware id → survives a new profile, incognito, often a different browser
  full id     → more unique, but changes between browser engines
+ soft id     → last resort for Safari Private Browsing (see below); coarse
+               enough that whole groups of identical devices share one
 </pre>
     <p class="small">Deliberately excluded: <code>devicePixelRatio</code>. It changes with page
     zoom, and zoom is per-profile, so it would break recognition for anyone who had zoomed in.</p>
@@ -74,6 +77,23 @@
     <p>Location is read off the IP address every request carries anyway — no
     <code>navigator.geolocation</code> call, so there is no prompt to decline. City-level, often
     wrong by a metro area, and never stored.</p>
+    <h3>4. Where it stops working: Safari Private Browsing</h3>
+    <p>Since Safari 17, iOS and macOS Safari run <em>advanced tracking and fingerprinting
+    protection</em> — on by default in Private Browsing, optional everywhere else. It does not
+    block the APIs used here; it makes their answers unreliable
+    (<a href="https://webkit.org/blog/15697/private-browsing-2-0/">WebKit’s writeup</a>):</p>
+<pre class="ascii">
+ audio samples   every sample multiplied by 1 ± 0.001 of fresh random noise
+ canvas pixels   per-pixel noise, salted per session and per site
+ screen.width/   replaced by the window’s innerWidth / innerHeight, which
+ .height         differs between tabs and shifts as the URL bar collapses
+</pre>
+    <p>So the <code>hardware</code> and <code>full</code> ids change on <em>every single page
+    load</em> in a private tab — not just between tabs. There is nothing precise left to match on,
+    which is why this demo now falls back to the coarse <code>soft</code> id. That one is honest
+    about what it is: it identifies a <em>kind</em> of device (same GPU strings, same core count,
+    same platform, same timezone), not a device, so the page labels such a match “a guess”, and
+    the server refuses to use a coarse key at all once two different people share it.</p>
     <p class="small">Honest limits: this maps a name <em>you typed</em> to a device hash — it
     doesn’t discover your real identity out of thin air (a real tracker does that by linking the
     fingerprint to an account or an ad-network profile). Matching across two different browser

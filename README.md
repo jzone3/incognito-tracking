@@ -39,15 +39,19 @@ anywhere; the audio component is pure offline signal processing.
 | Static | Screen size, color depth, CPU cores, device memory, platform, touch points, timezone. (`devicePixelRatio` is deliberately excluded — page zoom changes it, and zoom is per-profile.) |
 | Canvas | Text + shape rasterization read back via `toDataURL()` (font/AA differences). |
 
-Two IDs are derived:
+Three IDs are derived:
 
 - **`hardware`** = SHA-256(audio + WebGL + static attributes). Deliberately excludes
   canvas, which is the most browser-specific signal — this is the ID that survives a
   new profile or a different browser.
 - **`full`** = SHA-256(everything, including canvas). More precise, more brittle.
+- **`soft`** = SHA-256(WebGL + device attributes *minus screen size*). No audio, no
+  canvas, no screen dimensions — the three things Safari randomises or overrides in
+  Private Browsing. It is coarse enough to be a device *class* rather than a device,
+  so it is a clearly-labelled last resort; see [Safari Private Browsing](#safari-private-browsing-and-the-soft-id).
 
-The server ([`api/fp.js`](api/fp.js)) tries `full` first, then falls back
-to `hardware`. That fallback is the whole point: it is what links an incognito
+The server ([`api/fp.js`](api/fp.js)) tries `full` first, then `hardware`, then
+`soft`. That fallback chain is the whole point: it is what links an incognito
 session back to your named identity.
 
 Two extras make the link visible:
@@ -62,6 +66,75 @@ Two extras make the link visible:
   `x-vercel-ip-city` / `-country-region` / `-country` edge headers; locally it falls
   back to a keyless [ipwho.is](https://ipwho.is) lookup, and private IPs are skipped.
   It is city-level, often off by a metro area, and never stored.
+
+## Safari Private Browsing and the `soft` id
+
+iOS and macOS Safari have shipped *advanced tracking and fingerprinting protection*
+since Safari 17 — **on by default in Private Browsing**, opt-in for normal browsing
+(iOS: Settings › Apps › Safari › Advanced; macOS: Safari › Settings › Advanced).
+It does not block the APIs this demo uses. It makes their answers unstable, which is
+worse for a fingerprinter
+([WebKit writeup](https://webkit.org/blog/15697/private-browsing-2-0/)):
+
+| Signal | What Safari does with protections on |
+| --- | --- |
+| `AudioBuffer.getChannelData()` | Every sample multiplied by `1 ± 0.001` of random noise. Normally distributed and consistent within one buffer since 17.5, so it cannot be averaged away cheaply. |
+| 2D canvas / WebGL readback | Per-pixel noise on painted pixels, seeded by a hash salt that is unique per session *and* per origin. |
+| `screen.width` / `.height` | Replaced by the window's `innerWidth` / `innerHeight`. `screenX/Y` → `(0,0)`, `outerWidth/Height` → inner. |
+
+Consequences for this demo, in order of how badly they hurt:
+
+1. The audio sum and the canvas image change on **every page load** in a private tab.
+   So `full` and `hardware` do not just fail to match a normal tab — they fail to
+   match the same private tab a second later. This is not the ephemerality of private
+   mode; it is deliberate per-session noise.
+2. `screen.width x height` in a private tab is the *viewport*, which differs from the
+   real screen and shifts as the URL bar collapses. Bucketing it would not help.
+
+That leaves the `soft` id: WebGL strings (Safari reports a generic
+`Apple Inc. | Apple GPU`, identical across all Apple devices), colour depth, CPU core
+count, `deviceMemory` (absent on Safari), platform, `maxTouchPoints`, timezone.
+
+**The tradeoff is real and it is not small.** Every iPhone of the same generation, on
+the same iOS version, in the same timezone, produces the same `soft` id. That is a
+device class — maybe tens of bits fewer than `hardware`, and on a busy site it would
+collide constantly. So:
+
+- `soft` is only consulted after `full` and `hardware` both miss.
+- A `soft` match is reported to the page as `matchedOn: "soft"` and rendered as
+  “coarse device-class match — a guess”, never as a confident recognition.
+- The moment a second *name* registers against the same `soft` key, that key is
+  marked ambiguous and is never matched again — better to say “new device” than to
+  greet someone with a stranger's name.
+- `hardware` and `full` are byte-for-byte unchanged, so records stored by earlier
+  versions keep working and a client that sends no `soft` id behaves exactly as before.
+
+There is a known way to attack the audio protection specifically — render the buffer
+repeatedly and average the noise out, as
+[Fingerprint.com demonstrated](https://fingerprint.com/blog/bypassing-safari-17-audio-fingerprinting-protection/).
+This repo deliberately does not do that: it is a demonstration of what tracking
+vendors do, not an arms race against a privacy protection, and the audio component
+carries almost no cross-device entropy anyway (every machine measured here sums to
+`124.0434…`).
+
+### Reproducing it without an iPhone
+
+[`safari-protections.js`](safari-protections.js) models the three documented
+behaviours above and is injected into a Playwright WebKit context by `verify.js`.
+Measured on this machine (12-char hash prefixes):
+
+| context | audio | hardware | full | soft |
+| --- | --- | --- | --- | --- |
+| WebKit, normal | `124.04345374458353` | `befcd23f4444` | `a11fcee959f1` | `90e19d9ce5ac` |
+| WebKit, normal, fresh context | `124.04345374458353` | `befcd23f4444` | `a11fcee959f1` | `90e19d9ce5ac` |
+| WebKit + protections | `124.0459250896165` | `cda51f64724c` | `dfa2b1f4a842` | `90e19d9ce5ac` |
+| WebKit + protections, again | `124.03744574045413` | `da68898da80c` | `6e8780f3b9cd` | `90e19d9ce5ac` |
+| WebKit + protections, phone viewport | `124.04587967375119` | `6743ae4de41c` | `d9abd0d5abdb` | `90e19d9ce5ac` |
+
+Playwright's WebKit is **not** iOS Safari — it does not implement the protections at
+all, which is why they have to be emulated, and its WebGL/screen values come from
+this Linux VM. The table shows that the emulated protections defeat `hardware` and
+`full` while `soft` survives; it is not evidence about a real iPhone.
 
 ## Run it locally
 
@@ -97,7 +170,14 @@ cannot produce a false pass.
 ## Honest limitations
 
 - **Same-browser normal → incognito, and cookie clearing: reliable.** This is the
-  core claim and it holds.
+  core claim and it holds — in Chrome, Edge, Firefox, and Safari with advanced
+  protections off.
+- **iOS/macOS Safari Private Browsing: the precise ids are unlinkable by design,**
+  and that is Safari working correctly, not a bug here. Audio and canvas are
+  re-randomised on every load and `screen` reports the viewport, so `full` and
+  `hardware` are single-use values. Only the coarse `soft` id can match, it is a
+  device-class guess, and it is labelled as one. See
+  [Safari Private Browsing](#safari-private-browsing-and-the-soft-id).
 - **Cross-*engine* (Chrome ↔ Firefox): not guaranteed.** The two engines produce
   different WebAudio floats and expose different WebGL renderer strings, so the
   `hardware` ID diverges. On the headless VM used to build this, Chromium reported
