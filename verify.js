@@ -1,13 +1,15 @@
 // Verify the demo links two separate browser contexts via fingerprint alone.
 const playwright = require('playwright');
+const SAFARI_PROTECTIONS = require('./safari-protections');
 const BASE = 'http://localhost:8080';
 // Unique per run, so a stale registration from an earlier run can't fake a pass.
 const NAME = 'Jared-' + Date.now().toString(36);
 const KNOWS = new RegExp('You are\\s+' + NAME);
 
-async function run(browser, label) {
+async function run(browser, label, opts = {}) {
   // Fresh context = no shared cookies/storage with any other context.
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(opts.contextOptions);
+  if (opts.protections) await ctx.addInitScript(SAFARI_PROTECTIONS);
   const page = await ctx.newPage();
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => document.getElementById('hwid').textContent !== '…');
@@ -56,6 +58,41 @@ async function run(browser, label) {
     console.log('firefox skipped: ' + e.message);
   }
 
-  console.log('\nSUMMARY incognito=' + knowsB + ' firefox=' + knowsFF);
+  // WebKit with Safari's advanced fingerprinting protections emulated: audio and
+  // canvas are randomised per session and screen size is replaced by the window
+  // size, so `full` and `hardware` cannot match. Only the coarse `soft` key can,
+  // and it must be reported as a guess.
+  let knowsSafari = null;
+  try {
+    const webkit = await playwright.webkit.launch();
+    const D = await run(webkit, 'webkit-normal');
+    if (await D.page.locator('#forget').count()) {
+      await D.page.click('#forget');
+      await D.page.waitForSelector('#name');
+    }
+    // Deliberately stable across runs, unlike NAME: the coarse key is derived from
+    // device attributes only, so a fresh name on every run would make the key
+    // ambiguous (see softRecord) and every later run would fail.
+    const wkName = 'Jared-webkit';
+    await D.page.fill('#name', wkName);
+    await D.page.click('#save');
+    await D.page.waitForTimeout(400);
+    await D.ctx.close();
+
+    const E = await run(webkit, 'webkit-private-protected', {
+      protections: true,
+      contextOptions: { viewport: { width: 390, height: 664 } },
+    });
+    knowsSafari = new RegExp('You are\\s+' + wkName).test(E.state)
+      && /coarse device-class match/.test(E.state);
+    console.log(`RESULT webkit private+protections recognized as ${wkName} via soft: ${knowsSafari}`);
+    await E.ctx.close();
+    await webkit.close();
+  } catch (e) {
+    console.log('webkit skipped: ' + e.message);
+  }
+
+  console.log('\nSUMMARY incognito=' + knowsB + ' firefox=' + knowsFF +
+    ' safari-protected=' + knowsSafari);
   process.exit(knowsB ? 0 : 1);
 })();

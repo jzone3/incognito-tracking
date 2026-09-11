@@ -1,6 +1,6 @@
 // POST /api/fp
-//   { op: 'identify', hardware, full } -> { name, avatar, matchedOn, backend, geo }
-//   { op: 'register', name, hardware, full } -> { ok, avatar }
+//   { op: 'identify', hardware, full, soft } -> { name, avatar, matchedOn, backend, geo }
+//   { op: 'register', name, hardware, full, soft } -> { ok, avatar }
 //
 // Both operations live in ONE function on purpose: separate Vercel functions get
 // separate module instances, so the in-memory fallback store would never be
@@ -34,15 +34,17 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.statusCode = 405; return res.end('method'); }
   const body = await readJson(req);
-  const { op, name, hardware, full } = body;
+  const { op, name, hardware, full, soft } = body;
 
   try {
     if (op === 'register') {
       if (!name || !hardware) { res.statusCode = 400; return json(res, { ok: false }); }
       // Keep whatever badge this device was already given; only the name is new.
+      // Deliberately not the coarse key: that badge belongs to a device class, and
+      // handing it to a second device would make the badge stop meaning anything.
       const prev = await lookup(hardware, full);
       const rec = { name, avatar: (prev && prev.rec.avatar) || randomAvatar() };
-      await save(hardware, full, rec);
+      await save(hardware, full, soft, rec);
       return json(res, { ok: true, avatar: rec.avatar });
     }
 
@@ -50,7 +52,7 @@ module.exports = async (req, res) => {
       // Precise full (device + browser) match first, then the hardware-only match
       // that survives incognito / cookie-clear / another browser on the same machine.
       const geo = await lookupGeo(req);
-      const hit = await lookup(hardware, full);
+      const hit = await lookup(hardware, full, soft);
       if (hit) {
         return json(res, {
           name: hit.rec.name || null, avatar: hit.rec.avatar,
@@ -60,7 +62,7 @@ module.exports = async (req, res) => {
       // First sighting: mint a badge for this device and remember it, so the
       // next context (incognito, cleared cookies, another browser) gets it back.
       const rec = { name: null, avatar: randomAvatar() };
-      if (hardware) await save(hardware, full, rec);
+      if (hardware) await save(hardware, full, soft, rec);
       return json(res, { name: null, avatar: rec.avatar, backend: store.backend, geo });
     }
 
@@ -72,7 +74,7 @@ module.exports = async (req, res) => {
   }
 };
 
-async function lookup(hardware, full) {
+async function lookup(hardware, full, soft) {
   if (full) {
     const rec = parseRec(await store.get('full:' + full));
     if (rec) return { rec, matchedOn: 'full' };
@@ -81,13 +83,35 @@ async function lookup(hardware, full) {
     const rec = parseRec(await store.get('hw:' + hardware));
     if (rec) return { rec, matchedOn: 'hardware' };
   }
+  // Last resort, for browsers that randomise the precise signals per session
+  // (Safari Private Browsing): a coarse device-class key. Only trusted while it
+  // has been claimed by exactly one name — see softRecord().
+  if (soft) {
+    const rec = parseRec(await store.get('soft:' + soft));
+    if (rec && rec.name && !rec.ambiguous) return { rec, matchedOn: 'soft' };
+  }
   return null;
 }
 
-async function save(hardware, full, rec) {
+async function save(hardware, full, soft, rec) {
   const value = JSON.stringify(rec);
   await store.set('hw:' + hardware, value);
   if (full) await store.set('full:' + full, value);
+  if (soft) await store.set('soft:' + soft, JSON.stringify(await softRecord(soft, rec)));
+}
+
+// The coarse key is shared by every device of the same class (same GPU strings,
+// CPU count, platform, touch points, timezone). The moment a second *name* claims
+// one, guessing from it would mean greeting someone with a stranger's name, so the
+// key is marked ambiguous and never matched again.
+async function softRecord(soft, rec) {
+  const prev = parseRec(await store.get('soft:' + soft));
+  if (!prev) return rec;
+  if (prev.ambiguous) return prev;
+  if (prev.name && rec.name && prev.name !== rec.name) {
+    return { name: null, avatar: prev.avatar, ambiguous: true };
+  }
+  return { name: rec.name || prev.name || null, avatar: prev.avatar || rec.avatar };
 }
 
 // Records are JSON; a bare string is a name written by an earlier version.

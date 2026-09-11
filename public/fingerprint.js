@@ -92,6 +92,22 @@ function staticAttrs() {
   ].join('|');
 }
 
+// Same list minus screen dimensions. Safari's advanced fingerprinting protection
+// (on by default in Private Browsing since 17.0) reports screen.width/height as
+// the *window's* innerWidth/innerHeight, which differs between a normal tab and a
+// private tab and shifts as the URL bar collapses.
+function softAttrs() {
+  const n = navigator;
+  return [
+    screen.colorDepth,
+    n.hardwareConcurrency,
+    n.deviceMemory || '',
+    n.platform,
+    n.maxTouchPoints,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+  ].join('|');
+}
+
 // Build a "hardware fingerprint" that is stable across browser profiles
 // (incognito, cleared cookies) AND largely across different browsers on the
 // same machine — because it is driven by the physical device, not the profile.
@@ -104,10 +120,17 @@ async function computeFingerprint() {
   const hardware = await sha256Hex([audio, webgl, attrs].join('##'));
   // Full: adds canvas (browser-specific), most precise within one browser family.
   const full = await sha256Hex([audio, webgl, attrs, canvas].join('##'));
+  // Soft: everything Safari's advanced fingerprinting protection leaves alone —
+  // no audio samples, no canvas pixels, no screen size, because those three are
+  // per-session randomised or overridden in Private Browsing. What is left is
+  // closer to a device *class* than a device, so the server only ever uses it as
+  // a last resort and refuses it when two people share one. See README.
+  const soft = await sha256Hex([webgl, softAttrs()].join('##'));
   return {
     hardware,
     full,
-    components: { audio, webgl, attrs, canvasLen: canvas.length },
+    soft,
+    components: { audio, webgl, attrs, canvasLen: canvas.length, softAttrs: softAttrs() },
   };
 }
 

@@ -136,11 +136,11 @@ button.linkish:hover { background: none; color: var(--ink); }
 .face {
   flex: none; display: grid; place-items: center;
   width: 40px; height: 40px; border-radius: 50%; font-size: 20px; line-height: 1;
-  background: color-mix(in srgb, var(--c) 12%, var(--paper));
-  border: 1px solid color-mix(in srgb, var(--c) 40%, var(--paper));
+  background: color-mix(in srgb, var(--c) 22%, var(--paper));
+  border: 2px solid var(--c);
 }
 .face.lg { width: 60px; height: 60px; font-size: 32px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 7%, transparent); }
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 16%, transparent); }
 @media (max-width: 480px) { .who { gap: 12px; } .face.lg { width: 48px; height: 48px; font-size: 26px; } }
 
 .tag {
